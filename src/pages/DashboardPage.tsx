@@ -11,6 +11,8 @@ import IncomeTable from "@/components/income-table";
 import ExpenseTable from "@/components/expense-table";
 import DebtManagement from "@/components/debt-management";
 import { Income, Expense, incomeAPI, expenseAPI, summaryAPI } from "@/lib/api";
+import { incomeCategories, expenseCategories } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -49,6 +51,10 @@ export default function DashboardPage() {
       // Tải chi tiêu
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
+      
+      // Cập nhật khoản còn lại của tháng trước (nếu cần)
+      await updatePreviousMonthRemaining(summary.previousMonthRemaining);
+      
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
     } finally {
@@ -59,6 +65,41 @@ export default function DashboardPage() {
   useEffect(() => {
     loadData();
   }, [month, year]);
+  
+  // Hàm cập nhật khoản còn lại tháng trước
+  const updatePreviousMonthRemaining = async (amount: number) => {
+    try {
+      // Kiểm tra xem đã có mục "Tiền còn tháng trước" chưa
+      const previousMonthEntry = incomes.find(income => income.category === "previousMonth");
+      
+      if (amount > 0) {
+        if (previousMonthEntry) {
+          // Cập nhật nếu đã tồn tại
+          if (previousMonthEntry.amount !== amount) {
+            const id = previousMonthEntry._id || previousMonthEntry.id;
+            if (id) {
+              await incomeAPI.update(id, { amount });
+            }
+          }
+        } else {
+          // Thêm mới nếu chưa tồn tại
+          await incomeAPI.create({
+            month,
+            year,
+            category: "previousMonth",
+            amount,
+            note: "Tự động cập nhật từ tháng trước",
+          });
+          
+          // Tải lại thu nhập sau khi thêm mới
+          const incomesData = await incomeAPI.getByMonth(month, year);
+          setIncomes(incomesData);
+        }
+      }
+    } catch (error) {
+      console.error("Lỗi khi cập nhật khoản còn lại tháng trước:", error);
+    }
+  };
   
   // Xử lý khi tháng/năm thay đổi
   const handleMonthChange = (newMonth: number, newYear: number) => {
@@ -128,7 +169,8 @@ export default function DashboardPage() {
                     <IncomeTable 
                       incomes={incomes} 
                       month={month} 
-                      year={year} 
+                      year={year}
+                      categories={incomeCategories}
                       onUpdate={loadData} 
                     />
                   ),
@@ -136,7 +178,8 @@ export default function DashboardPage() {
                     <ExpenseTable 
                       expenses={expenses} 
                       month={month} 
-                      year={year} 
+                      year={year}
+                      categories={expenseCategories}
                       onUpdate={loadData} 
                     />
                   ),

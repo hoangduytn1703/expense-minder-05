@@ -10,7 +10,37 @@ export function cn(...inputs: ClassValue[]) {
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', {
     style: 'decimal',
+    useGrouping: true,
   }).format(amount);
+}
+
+// Hàm định dạng đầu vào số
+export function formatNumberInput(value: string): string {
+  // Loại bỏ tất cả các ký tự không phải số
+  const numbers = value.replace(/[^\d]/g, '');
+  
+  // Chuyển thành số
+  const num = parseInt(numbers, 10);
+  
+  // Nếu giá trị trống hoặc không phải số, trả về chuỗi trống
+  if (isNaN(num)) {
+    return '';
+  }
+  
+  // Định dạng số với dấu phân cách
+  return new Intl.NumberFormat('vi-VN').format(num);
+}
+
+// Chuyển đổi giá trị từ chuỗi định dạng sang số
+export function parseFormattedNumber(value: string): number {
+  // Loại bỏ tất cả các ký tự không phải số
+  const numberStr = value.replace(/[^\d]/g, '');
+  
+  // Chuyển thành số
+  const num = parseInt(numberStr, 10);
+  
+  // Nếu không phải số hợp lệ, trả về 0
+  return isNaN(num) ? 0 : num;
 }
 
 // Danh sách các loại thu nhập

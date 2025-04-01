@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Table, TableBody, TableCaption, TableCell, 
   TableHead, TableHeader, TableRow 
@@ -8,39 +8,79 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Income, incomeAPI } from "@/lib/api";
-import { formatCurrency, getIncomeCategoryName, incomeCategories } from "@/lib/utils";
+import { formatCurrency, getIncomeCategoryName, incomeCategories, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 interface IncomeTableProps {
   incomes: Income[];
   month: number;
   year: number;
+  categories?: typeof incomeCategories;
   onUpdate: () => void;
 }
 
-export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTableProps) {
+export default function IncomeTable({ 
+  incomes, 
+  month, 
+  year, 
+  categories = incomeCategories,
+  onUpdate 
+}: IncomeTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState<number>(0);
+  const [editAmount, setEditAmount] = useState<string>('0');
   const [editNote, setEditNote] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
-  const [newCategory, setNewCategory] = useState(incomeCategories[0].id);
-  const [newAmount, setNewAmount] = useState<number>(0);
+  const [newCategory, setNewCategory] = useState(categories[0].id);
+  const [newAmount, setNewAmount] = useState<string>('0');
   const [newNote, setNewNote] = useState("");
+  const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
+  
+  // Chuẩn bị dữ liệu để hiển thị tất cả các loại thu nhập
+  useEffect(() => {
+    const mergedIncomes: Income[] = [];
+    
+    // Tạo map từ dữ liệu hiện có
+    const incomeMap = new Map();
+    incomes.forEach(income => {
+      incomeMap.set(income.category, income);
+    });
+    
+    // Đảm bảo tất cả các loại thu nhập đều được hiển thị
+    categories.forEach(category => {
+      if (incomeMap.has(category.id)) {
+        // Nếu đã có dữ liệu cho loại này, sử dụng nó
+        mergedIncomes.push(incomeMap.get(category.id));
+      } else {
+        // Nếu chưa có, tạo mục mới với số tiền là 0
+        mergedIncomes.push({
+          category: category.id,
+          month,
+          year,
+          amount: 0,
+          note: ""
+        });
+      }
+    });
+    
+    setDisplayedIncomes(mergedIncomes);
+  }, [incomes, categories, month, year]);
   
   // Tính tổng thu nhập
-  const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
+  const totalIncome = displayedIncomes.reduce((sum, income) => sum + income.amount, 0);
   
   // Bắt đầu chỉnh sửa một mục
   const startEditing = (income: Income) => {
-    setEditingId(income._id || income.id || null);
-    setEditAmount(income.amount);
+    const actualId = income._id || income.id;
+    setEditingId(actualId || null);
+    setEditAmount(formatNumberInput(income.amount.toString()));
     setEditNote(income.note || "");
   };
   
   // Lưu chỉnh sửa
   const saveEdit = async (id: string) => {
     try {
-      await incomeAPI.update(id, { amount: editAmount, note: editNote });
+      const amount = parseFormattedNumber(editAmount);
+      await incomeAPI.update(id, { amount, note: editNote });
       toast({
         title: "Thành công",
         description: "Đã cập nhật khoản thu nhập",
@@ -52,14 +92,43 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
     }
   };
   
+  // Thêm mới một mục không có sẵn ID
+  const createIncome = async (income: Income) => {
+    try {
+      const amount = parseFormattedNumber(editAmount);
+      await incomeAPI.create({
+        ...income,
+        amount,
+        note: editNote,
+      });
+      toast({
+        title: "Thành công",
+        description: "Đã tạo khoản thu nhập",
+      });
+      setEditingId(null);
+      onUpdate();
+    } catch (error) {
+      console.error("Lỗi khi tạo:", error);
+    }
+  };
+  
+  // Xử lý lưu chỉnh sửa
+  const handleSave = (income: Income) => {
+    const id = income._id || income.id;
+    if (id) {
+      saveEdit(id);
+    } else {
+      createIncome(income);
+    }
+  };
+  
   // Xóa một mục
   const deleteIncome = async (income: Income) => {
     const id = income._id || income.id;
     if (!id) {
       toast({
-        title: "Lỗi",
-        description: "Không tìm thấy ID của khoản thu nhập",
-        variant: "destructive",
+        title: "Thông báo",
+        description: "Mục này chưa được lưu vào cơ sở dữ liệu",
       });
       return;
     }
@@ -81,11 +150,12 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
   // Thêm mục mới
   const addIncome = async () => {
     try {
+      const amount = parseFormattedNumber(newAmount);
       await incomeAPI.create({
         month,
         year,
         category: newCategory,
-        amount: newAmount,
+        amount,
         note: newNote,
       });
       
@@ -95,13 +165,19 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
       });
       
       setIsAdding(false);
-      setNewCategory(incomeCategories[0].id);
-      setNewAmount(0);
+      setNewCategory(categories[0].id);
+      setNewAmount('0');
       setNewNote("");
       onUpdate();
     } catch (error) {
       console.error("Lỗi khi thêm:", error);
     }
+  };
+  
+  // Xử lý thay đổi số tiền với định dạng
+  const handleAmountChange = (value: string, setterFunction: React.Dispatch<React.SetStateAction<string>>) => {
+    const formattedValue = formatNumberInput(value);
+    setterFunction(formattedValue);
   };
   
   return (
@@ -117,58 +193,67 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
           </TableRow>
         </TableHeader>
         <TableBody>
-          {incomes.map((income) => (
-            <TableRow key={income._id || income.id}>
-              <TableCell>{getIncomeCategoryName(income.category)}</TableCell>
-              <TableCell>
-                {editingId === (income._id || income.id) ? (
-                  <Input
-                    type="number"
-                    value={editAmount}
-                    onChange={(e) => setEditAmount(Number(e.target.value))}
-                    className="w-32"
-                  />
-                ) : (
-                  `${formatCurrency(income.amount)} đ`
-                )}
-              </TableCell>
-              <TableCell>
-                {editingId === (income._id || income.id) ? (
-                  <Input
-                    value={editNote}
-                    onChange={(e) => setEditNote(e.target.value)}
-                  />
-                ) : (
-                  income.note || ""
-                )}
-              </TableCell>
-              <TableCell className="text-right">
-                {editingId === (income._id || income.id) ? (
-                  <Button size="sm" onClick={() => saveEdit(editingId)}>
-                    Lưu
-                  </Button>
-                ) : (
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => startEditing(income)}
-                    >
-                      <Pencil className="h-4 w-4" />
+          {displayedIncomes.map((income) => {
+            const actualId = income._id || income.id;
+            const isEditing = editingId === actualId;
+            
+            return (
+              <TableRow key={income.category}>
+                <TableCell>{getIncomeCategoryName(income.category)}</TableCell>
+                <TableCell>
+                  {isEditing ? (
+                    <Input
+                      type="text"
+                      value={editAmount}
+                      onChange={(e) => handleAmountChange(e.target.value, setEditAmount)}
+                      className="w-32"
+                    />
+                  ) : (
+                    `${formatCurrency(income.amount)} đ`
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing ? (
+                    <Input
+                      value={editNote}
+                      onChange={(e) => setEditNote(e.target.value)}
+                    />
+                  ) : (
+                    income.note || ""
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {isEditing ? (
+                    <Button size="sm" onClick={() => handleSave(income)} type="button">
+                      Lưu
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => deleteIncome(income)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                  ) : (
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => startEditing(income)}
+                        type="button"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {actualId && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => deleteIncome(income)}
+                          type="button"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
           
           {isAdding && (
             <TableRow>
@@ -178,7 +263,7 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                 >
-                  {incomeCategories.map((cat) => (
+                  {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
@@ -187,9 +272,9 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
               </TableCell>
               <TableCell>
                 <Input
-                  type="number"
+                  type="text"
                   value={newAmount}
-                  onChange={(e) => setNewAmount(Number(e.target.value))}
+                  onChange={(e) => handleAmountChange(e.target.value, setNewAmount)}
                   placeholder="Số tiền"
                   className="w-32"
                 />
@@ -203,10 +288,10 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-2">
-                  <Button size="sm" onClick={addIncome}>
+                  <Button size="sm" onClick={addIncome} type="button">
                     Lưu
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)}>
+                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} type="button">
                     Hủy
                   </Button>
                 </div>
@@ -222,6 +307,7 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
           className="flex items-center gap-2"
           onClick={() => setIsAdding(true)}
           disabled={isAdding}
+          type="button"
         >
           <PlusCircle className="h-4 w-4" /> Thêm
         </Button>

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Table, TableBody, TableCaption, TableCell, 
   TableHead, TableHeader, TableRow 
@@ -8,45 +8,88 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Expense, expenseAPI } from "@/lib/api";
-import { formatCurrency, getExpenseCategoryName, expenseCategories } from "@/lib/utils";
+import { formatCurrency, getExpenseCategoryName, expenseCategories, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 interface ExpenseTableProps {
   expenses: Expense[];
   month: number;
   year: number;
+  categories?: typeof expenseCategories;
   onUpdate: () => void;
 }
 
-export default function ExpenseTable({ expenses, month, year, onUpdate }: ExpenseTableProps) {
+export default function ExpenseTable({ 
+  expenses, 
+  month, 
+  year, 
+  categories = expenseCategories,
+  onUpdate 
+}: ExpenseTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState<number>(0);
-  const [editActualAmount, setEditActualAmount] = useState<number | undefined>(undefined);
+  const [editAmount, setEditAmount] = useState<string>('0');
+  const [editActualAmount, setEditActualAmount] = useState<string>('');
   const [editNote, setEditNote] = useState<string>("");
   
   const [isAdding, setIsAdding] = useState(false);
-  const [newCategory, setNewCategory] = useState(expenseCategories[0].id);
-  const [newAmount, setNewAmount] = useState<number>(0);
-  const [newActualAmount, setNewActualAmount] = useState<number | undefined>(undefined);
+  const [newCategory, setNewCategory] = useState(categories[0].id);
+  const [newAmount, setNewAmount] = useState<string>('0');
+  const [newActualAmount, setNewActualAmount] = useState<string>('');
   const [newNote, setNewNote] = useState("");
+  const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
+  
+  // Chuẩn bị dữ liệu để hiển thị tất cả các loại chi tiêu
+  useEffect(() => {
+    const mergedExpenses: Expense[] = [];
+    
+    // Tạo map từ dữ liệu hiện có
+    const expenseMap = new Map();
+    expenses.forEach(expense => {
+      expenseMap.set(expense.category, expense);
+    });
+    
+    // Đảm bảo tất cả các loại chi tiêu đều được hiển thị
+    categories.forEach(category => {
+      if (expenseMap.has(category.id)) {
+        // Nếu đã có dữ liệu cho loại này, sử dụng nó
+        mergedExpenses.push(expenseMap.get(category.id));
+      } else {
+        // Nếu chưa có, tạo mục mới với số tiền là 0
+        mergedExpenses.push({
+          category: category.id,
+          month,
+          year,
+          amount: 0,
+          scope: category.scope,
+          note: ""
+        });
+      }
+    });
+    
+    setDisplayedExpenses(mergedExpenses);
+  }, [expenses, categories, month, year]);
   
   // Tính tổng chi tiêu
-  const totalExpense = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpense = displayedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   
   // Bắt đầu chỉnh sửa một mục
   const startEditing = (expense: Expense) => {
-    setEditingId(expense._id || expense.id || null);
-    setEditAmount(expense.amount);
-    setEditActualAmount(expense.actualAmount);
+    const actualId = expense._id || expense.id;
+    setEditingId(actualId || null);
+    setEditAmount(formatNumberInput(expense.amount.toString()));
+    setEditActualAmount(expense.actualAmount ? formatNumberInput(expense.actualAmount.toString()) : '');
     setEditNote(expense.note || "");
   };
   
   // Lưu chỉnh sửa
   const saveEdit = async (id: string) => {
     try {
+      const amount = parseFormattedNumber(editAmount);
+      const actualAmount = editActualAmount ? parseFormattedNumber(editActualAmount) : undefined;
+      
       await expenseAPI.update(id, { 
-        amount: editAmount, 
-        actualAmount: editActualAmount,
+        amount, 
+        actualAmount,
         note: editNote 
       });
       
@@ -62,14 +105,48 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
     }
   };
   
+  // Thêm mới một mục không có sẵn ID
+  const createExpense = async (expense: Expense) => {
+    try {
+      const amount = parseFormattedNumber(editAmount);
+      const actualAmount = editActualAmount ? parseFormattedNumber(editActualAmount) : undefined;
+      
+      await expenseAPI.create({
+        ...expense,
+        amount,
+        actualAmount,
+        note: editNote,
+      });
+      
+      toast({
+        title: "Thành công",
+        description: "Đã tạo khoản chi tiêu",
+      });
+      
+      setEditingId(null);
+      onUpdate();
+    } catch (error) {
+      console.error("Lỗi khi tạo:", error);
+    }
+  };
+  
+  // Xử lý lưu chỉnh sửa
+  const handleSave = (expense: Expense) => {
+    const id = expense._id || expense.id;
+    if (id) {
+      saveEdit(id);
+    } else {
+      createExpense(expense);
+    }
+  };
+  
   // Xóa một mục
   const deleteExpense = async (expense: Expense) => {
     const id = expense._id || expense.id;
     if (!id) {
       toast({
-        title: "Lỗi",
-        description: "Không tìm thấy ID của khoản chi tiêu",
-        variant: "destructive",
+        title: "Thông báo",
+        description: "Mục này chưa được lưu vào cơ sở dữ liệu",
       });
       return;
     }
@@ -93,15 +170,17 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
   // Thêm mục mới
   const addExpense = async () => {
     try {
-      const selectedCategory = expenseCategories.find(cat => cat.id === newCategory);
+      const selectedCategory = categories.find(cat => cat.id === newCategory);
+      const amount = parseFormattedNumber(newAmount);
+      const actualAmount = newActualAmount ? parseFormattedNumber(newActualAmount) : undefined;
       
       await expenseAPI.create({
         month,
         year,
         category: newCategory,
         scope: selectedCategory?.scope || "S",
-        amount: newAmount,
-        actualAmount: newActualAmount,
+        amount,
+        actualAmount,
         note: newNote,
       });
       
@@ -111,14 +190,20 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
       });
       
       setIsAdding(false);
-      setNewCategory(expenseCategories[0].id);
-      setNewAmount(0);
-      setNewActualAmount(undefined);
+      setNewCategory(categories[0].id);
+      setNewAmount('0');
+      setNewActualAmount('');
       setNewNote("");
       onUpdate();
     } catch (error) {
       console.error("Lỗi khi thêm:", error);
     }
+  };
+  
+  // Xử lý thay đổi số tiền với định dạng
+  const handleAmountChange = (value: string, setterFunction: React.Dispatch<React.SetStateAction<string>>) => {
+    const formattedValue = formatNumberInput(value);
+    setterFunction(formattedValue);
   };
   
   return (
@@ -136,19 +221,21 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
           </TableRow>
         </TableHeader>
         <TableBody>
-          {expenses.map((expense) => {
-            const category = expenseCategories.find(cat => cat.id === expense.category);
+          {displayedExpenses.map((expense) => {
+            const category = categories.find(cat => cat.id === expense.category);
+            const actualId = expense._id || expense.id;
+            const isEditing = editingId === actualId;
             
             return (
-              <TableRow key={expense._id || expense.id}>
+              <TableRow key={expense.category}>
                 <TableCell>{getExpenseCategoryName(expense.category)}</TableCell>
                 <TableCell>{expense.scope}</TableCell>
                 <TableCell>
-                  {editingId === (expense._id || expense.id) ? (
+                  {isEditing ? (
                     <Input
-                      type="number"
+                      type="text"
                       value={editAmount}
-                      onChange={(e) => setEditAmount(Number(e.target.value))}
+                      onChange={(e) => handleAmountChange(e.target.value, setEditAmount)}
                       className="w-28"
                     />
                   ) : (
@@ -156,13 +243,11 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   )}
                 </TableCell>
                 <TableCell>
-                  {editingId === (expense._id || expense.id) ? (
+                  {isEditing ? (
                     <Input
-                      type="number"
-                      value={editActualAmount || ""}
-                      onChange={(e) => 
-                        setEditActualAmount(e.target.value ? Number(e.target.value) : undefined)
-                      }
+                      type="text"
+                      value={editActualAmount}
+                      onChange={(e) => handleAmountChange(e.target.value, setEditActualAmount)}
                       className="w-28"
                       placeholder="Thực tế"
                     />
@@ -171,7 +256,7 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   )}
                 </TableCell>
                 <TableCell>
-                  {editingId === (expense._id || expense.id) ? (
+                  {isEditing ? (
                     <Input
                       value={editNote}
                       onChange={(e) => setEditNote(e.target.value)}
@@ -181,8 +266,8 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {editingId === (expense._id || expense.id) ? (
-                    <Button size="sm" onClick={() => saveEdit(editingId)}>
+                  {isEditing ? (
+                    <Button size="sm" onClick={() => handleSave(expense)} type="button">
                       Lưu
                     </Button>
                   ) : (
@@ -191,17 +276,21 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                         size="icon"
                         variant="ghost"
                         onClick={() => startEditing(expense)}
+                        type="button"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-red-500 hover:text-red-700"
-                        onClick={() => deleteExpense(expense)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {actualId && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => deleteExpense(expense)}
+                          type="button"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </TableCell>
@@ -217,32 +306,33 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                 >
-                  {expenseCategories.map((cat) => (
+                  {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name} ({cat.scope})
+                      {cat.name}
                     </option>
                   ))}
                 </select>
               </TableCell>
               <TableCell>
-                {expenseCategories.find(cat => cat.id === newCategory)?.scope || ""}
+                {(() => {
+                  const selectedCategory = categories.find(cat => cat.id === newCategory);
+                  return selectedCategory?.scope || "";
+                })()}
               </TableCell>
               <TableCell>
                 <Input
-                  type="number"
+                  type="text"
                   value={newAmount}
-                  onChange={(e) => setNewAmount(Number(e.target.value))}
-                  placeholder="Dự kiến"
+                  onChange={(e) => handleAmountChange(e.target.value, setNewAmount)}
+                  placeholder="Số tiền"
                   className="w-28"
                 />
               </TableCell>
               <TableCell>
                 <Input
-                  type="number"
-                  value={newActualAmount || ""}
-                  onChange={(e) => 
-                    setNewActualAmount(e.target.value ? Number(e.target.value) : undefined)
-                  }
+                  type="text"
+                  value={newActualAmount}
+                  onChange={(e) => handleAmountChange(e.target.value, setNewActualAmount)}
                   placeholder="Thực tế"
                   className="w-28"
                 />
@@ -256,10 +346,10 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-2">
-                  <Button size="sm" onClick={addExpense}>
+                  <Button size="sm" onClick={addExpense} type="button">
                     Lưu
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)}>
+                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} type="button">
                     Hủy
                   </Button>
                 </div>
@@ -275,6 +365,7 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
           className="flex items-center gap-2"
           onClick={() => setIsAdding(true)}
           disabled={isAdding}
+          type="button"
         >
           <PlusCircle className="h-4 w-4" /> Thêm
         </Button>
