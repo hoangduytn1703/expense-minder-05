@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -26,7 +25,7 @@ export default function DashboardPage() {
   const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
   const [previousMonthRemaining, setPreviousMonthRemaining] = useState(0);
-  const [previousMonthDate, setPreviousMonthDate] = useState("");
+  const [previousMonthInfo, setPreviousMonthInfo] = useState("");
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   const [isDataUpdating, setIsDataUpdating] = useState(false);
@@ -54,7 +53,15 @@ export default function DashboardPage() {
       setTotalExpense(summary.totalExpense);
       setRemaining(summary.remaining);
       setPreviousMonthRemaining(summary.previousMonthRemaining);
-      setPreviousMonthDate(summary.previousMonthDate || "");
+      
+      // Create a readable previous month string
+      let prevMonth = month - 1;
+      let prevYear = year;
+      if (prevMonth === 0) {
+        prevMonth = 12;
+        prevYear--;
+      }
+      setPreviousMonthInfo(`${prevMonth}/${prevYear}`);
       
       // Fetch incomes and expenses data
       const incomesData = await incomeAPI.getByMonth(month, year);
@@ -64,34 +71,12 @@ export default function DashboardPage() {
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
       
-      if (summary.shouldUpdatePreviousMonth) {
-        console.log("Updating previous month remaining:", summary.previousMonthRemaining);
-        await updatePreviousMonthRemaining(summary.previousMonthRemaining);
-        
-        // Re-fetch summary after updating previousMonth amount
-        setTimeout(async () => {
-          const updatedSummary = await summaryAPI.getMonthSummary(month, year);
-          setTotalIncome(updatedSummary.totalIncome);
-          setTotalExpense(updatedSummary.totalExpense);
-          setRemaining(updatedSummary.remaining);
-          
-          // Re-fetch incomes after updating previousMonth amount
-          const updatedIncomesData = await incomeAPI.getByMonth(month, year);
-          setIncomes(updatedIncomesData);
-          prepareDisplayData(updatedIncomesData, expensesData);
-          
-          setTimeout(() => {
-            setLoading(false);
-            setIsDataUpdating(false);
-          }, 1000);
-        }, 1000);
-      } else {
-        prepareDisplayData(incomesData, expensesData);
-        setTimeout(() => {
-          setLoading(false);
-          setIsDataUpdating(false);
-        }, 1000);
-      }
+      prepareDisplayData(incomesData, expensesData);
+      setTimeout(() => {
+        setLoading(false);
+        setIsDataUpdating(false);
+      }, 1000);
+      
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
       toast({
@@ -149,43 +134,6 @@ export default function DashboardPage() {
       }
     });
     setDisplayedExpenses(fullExpenses);
-  };
-  
-  const updatePreviousMonthRemaining = async (amount: number) => {
-    try {
-      const previousMonthEntry = incomes.find(income => income.category === "previousMonth");
-      
-      if (previousMonthEntry) {
-        // If entry exists, update it
-        if (previousMonthEntry.amount !== amount) {
-          const id = previousMonthEntry._id || previousMonthEntry.id;
-          if (id) {
-            await incomeAPI.update(id, { 
-              amount, 
-              note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`
-            });
-            console.log("Updated previous month entry:", amount);
-          }
-        }
-      } else if (amount > 0) {
-        // If entry does not exist, create it
-        await incomeAPI.create({
-          month,
-          year,
-          category: "previousMonth",
-          amount,
-          note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`
-        });
-        console.log("Created new previous month entry:", amount);
-      }
-    } catch (error) {
-      console.error("Lỗi khi cập nhật khoản còn lại tháng trước:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật số dư tháng trước.",
-        variant: "destructive",
-      });
-    }
   };
   
   const handleMonthChange = (newMonth: number, newYear: number) => {
@@ -250,10 +198,18 @@ export default function DashboardPage() {
                   />
                 </div>
                 
-                <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
-                  <p className="text-gray-500 mb-2">Thông tin cập nhật</p>
-                  <p className="text-sm">Số dư còn lại từ tháng trước ({previousMonthDate}): <span className="font-semibold">{new Intl.NumberFormat('vi-VN').format(previousMonthRemaining)} đ</span></p>
-                </div>
+                {previousMonthRemaining > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
+                    <p className="text-gray-500 mb-2">Thông tin từ tháng trước</p>
+                    <p className="text-sm flex justify-between">
+                      <span>Số dư còn lại tháng {previousMonthInfo}:</span>
+                      <span className="font-semibold text-green-600">{new Intl.NumberFormat('vi-VN').format(previousMonthRemaining)} đ</span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2 italic">
+                      Đây chỉ là thông tin tham khảo. Hãy thêm khoản thu nhập để đưa số dư này vào tháng hiện tại.
+                    </p>
+                  </div>
+                )}
                 
                 <BudgetTabs>
                   {{

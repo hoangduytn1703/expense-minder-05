@@ -19,7 +19,7 @@ export default function BudgetTabs({ children }: BudgetTabsProps) {
         <TabsTrigger 
           value="income" 
           className={`rounded-lg flex items-center gap-2 ${activeTab === 'income' 
-            ? 'bg-white shadow-sm text-yellow-600' 
+            ? 'bg-white shadow-sm text-green-600' 
             : 'bg-transparent hover:bg-white/50'}`}
         >
           <PiggyBank className="h-4 w-4" />

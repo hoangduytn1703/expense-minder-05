@@ -44,13 +44,13 @@ export function parseFormattedNumber(value: string): number {
   return isNaN(num) ? 0 : num;
 }
 
-// Danh sách các loại thu nhập - đưa previousMonth lên đầu
+// Danh sách các loại thu nhập
 export const incomeCategories = [
-  { id: "previousMonth", name: "Tiền còn tháng trước" },
   { id: "salary", name: "Lương cứng" },
   { id: "bonus", name: "Thưởng/OT" },  
   { id: "freelance", name: "Freelance" },
   { id: "debtCollection", name: "Thu nợ" },
+  { id: "monthlyBalance", name: "Tiền từ tháng trước" },
   { id: "advance", name: "Tiền nhậu" },
   { id: "hui", name: "Hụi" },
   { id: "other", name: "Khác" }
