@@ -32,7 +32,7 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
   
   // Bắt đầu chỉnh sửa một mục
   const startEditing = (income: Income) => {
-    setEditingId(income.id || null);
+    setEditingId(income._id || income.id || null);
     setEditAmount(income.amount);
     setEditNote(income.note || "");
   };
@@ -53,7 +53,17 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
   };
   
   // Xóa một mục
-  const deleteIncome = async (id: string) => {
+  const deleteIncome = async (income: Income) => {
+    const id = income._id || income.id;
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy ID của khoản thu nhập",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (window.confirm("Bạn có chắc muốn xóa mục này không?")) {
       try {
         await incomeAPI.delete(id);
@@ -108,10 +118,10 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
         </TableHeader>
         <TableBody>
           {incomes.map((income) => (
-            <TableRow key={income.id}>
+            <TableRow key={income._id || income.id}>
               <TableCell>{getIncomeCategoryName(income.category)}</TableCell>
               <TableCell>
-                {editingId === income.id ? (
+                {editingId === (income._id || income.id) ? (
                   <Input
                     type="number"
                     value={editAmount}
@@ -123,7 +133,7 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
                 )}
               </TableCell>
               <TableCell>
-                {editingId === income.id ? (
+                {editingId === (income._id || income.id) ? (
                   <Input
                     value={editNote}
                     onChange={(e) => setEditNote(e.target.value)}
@@ -133,8 +143,8 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
                 )}
               </TableCell>
               <TableCell className="text-right">
-                {editingId === income.id ? (
-                  <Button size="sm" onClick={() => saveEdit(income.id!)}>
+                {editingId === (income._id || income.id) ? (
+                  <Button size="sm" onClick={() => saveEdit(editingId)}>
                     Lưu
                   </Button>
                 ) : (
@@ -150,7 +160,7 @@ export default function IncomeTable({ incomes, month, year, onUpdate }: IncomeTa
                       size="icon"
                       variant="ghost"
                       className="text-red-500 hover:text-red-700"
-                      onClick={() => deleteIncome(income.id!)}
+                      onClick={() => deleteIncome(income)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

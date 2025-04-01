@@ -118,7 +118,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   
   // Start editing a debt
   const startEditing = (debt: Debt) => {
-    setEditingId(debt.id || null);
+    setEditingId(debt._id || debt.id || null);
     setEditName(debt.name);
     setEditTotalAmount(debt.totalAmount);
     setEditMonths(debt.months);
@@ -163,11 +163,12 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   };
   
   // Delete a debt
-  const deleteDebt = async (id: string) => {
+  const deleteDebt = async (debt: Debt) => {
+    const id = debt._id || debt.id;
     if (!id) {
       toast({
         title: "Lỗi",
-        description: "ID khoản nợ không hợp lệ",
+        description: "Không tìm thấy ID của khoản nợ",
         variant: "destructive",
       });
       return;
@@ -237,9 +238,9 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
               </TableRow>
             ) : (
               debts.map((debt) => (
-                <TableRow key={debt.id}>
+                <TableRow key={debt._id || debt.id}>
                   <TableCell>
-                    {editingId === debt.id ? (
+                    {editingId === (debt._id || debt.id) ? (
                       <Input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
@@ -249,7 +250,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === debt.id ? (
+                    {editingId === (debt._id || debt.id) ? (
                       <Input
                         type="number"
                         value={editTotalAmount}
@@ -261,7 +262,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === debt.id ? (
+                    {editingId === (debt._id || debt.id) ? (
                       <Input
                         type="number"
                         value={editMonths}
@@ -274,7 +275,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === debt.id ? (
+                    {editingId === (debt._id || debt.id) ? (
                       <div className="flex space-x-2">
                         <select
                           className="w-24 border rounded p-2"
@@ -307,7 +308,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     {formatCurrency(debt.monthlyPayment || 0)} đ
                   </TableCell>
                   <TableCell>
-                    {editingId === debt.id ? (
+                    {editingId === (debt._id || debt.id) ? (
                       <Input
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
@@ -317,8 +318,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {editingId === debt.id ? (
-                      <Button size="sm" onClick={() => saveEdit(debt.id!)}>
+                    {editingId === (debt._id || debt.id) ? (
+                      <Button size="sm" onClick={() => saveEdit(editingId)}>
                         Lưu
                       </Button>
                     ) : (
@@ -334,7 +335,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                           size="icon"
                           variant="ghost"
                           className="text-red-500 hover:text-red-700"
-                          onClick={() => deleteDebt(debt.id!)}
+                          onClick={() => deleteDebt(debt)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

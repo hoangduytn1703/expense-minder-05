@@ -35,7 +35,7 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
   
   // Bắt đầu chỉnh sửa một mục
   const startEditing = (expense: Expense) => {
-    setEditingId(expense.id || null);
+    setEditingId(expense._id || expense.id || null);
     setEditAmount(expense.amount);
     setEditActualAmount(expense.actualAmount);
     setEditNote(expense.note || "");
@@ -63,7 +63,17 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
   };
   
   // Xóa một mục
-  const deleteExpense = async (id: string) => {
+  const deleteExpense = async (expense: Expense) => {
+    const id = expense._id || expense.id;
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy ID của khoản chi tiêu",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (window.confirm("Bạn có chắc muốn xóa mục này không?")) {
       try {
         await expenseAPI.delete(id);
@@ -130,11 +140,11 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
             const category = expenseCategories.find(cat => cat.id === expense.category);
             
             return (
-              <TableRow key={expense.id}>
+              <TableRow key={expense._id || expense.id}>
                 <TableCell>{getExpenseCategoryName(expense.category)}</TableCell>
                 <TableCell>{expense.scope}</TableCell>
                 <TableCell>
-                  {editingId === expense.id ? (
+                  {editingId === (expense._id || expense.id) ? (
                     <Input
                       type="number"
                       value={editAmount}
@@ -146,7 +156,7 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   )}
                 </TableCell>
                 <TableCell>
-                  {editingId === expense.id ? (
+                  {editingId === (expense._id || expense.id) ? (
                     <Input
                       type="number"
                       value={editActualAmount || ""}
@@ -161,7 +171,7 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   )}
                 </TableCell>
                 <TableCell>
-                  {editingId === expense.id ? (
+                  {editingId === (expense._id || expense.id) ? (
                     <Input
                       value={editNote}
                       onChange={(e) => setEditNote(e.target.value)}
@@ -171,8 +181,8 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {editingId === expense.id ? (
-                    <Button size="sm" onClick={() => saveEdit(expense.id!)}>
+                  {editingId === (expense._id || expense.id) ? (
+                    <Button size="sm" onClick={() => saveEdit(editingId)}>
                       Lưu
                     </Button>
                   ) : (
@@ -188,7 +198,7 @@ export default function ExpenseTable({ expenses, month, year, onUpdate }: Expens
                         size="icon"
                         variant="ghost"
                         className="text-red-500 hover:text-red-700"
-                        onClick={() => deleteExpense(expense.id!)}
+                        onClick={() => deleteExpense(expense)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

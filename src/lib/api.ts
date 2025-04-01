@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // Interface cho dữ liệu thu nhập
 export interface Income {
+  _id?: string;
   id?: string;
   month: number;
   year: number;
@@ -16,6 +17,7 @@ export interface Income {
 
 // Interface cho dữ liệu chi tiêu
 export interface Expense {
+  _id?: string;
   id?: string;
   month: number;
   year: number;
@@ -28,6 +30,7 @@ export interface Expense {
 
 // Interface cho dữ liệu nợ
 export interface Debt {
+  _id?: string;
   id?: string;
   name: string;
   totalAmount: number;
@@ -64,6 +67,12 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     });
     throw error;
   }
+}
+
+// Lấy ID thực sự từ đối tượng (có thể là id hoặc _id)
+function getActualId(obj: { _id?: string; id?: string }) {
+  // MongoDB thường trả về _id, nhưng frontend thường dùng id
+  return obj._id || obj.id;
 }
 
 // API cho thu nhập
