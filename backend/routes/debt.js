@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Debt = require('../models/debt');
 const Expense = require('../models/expense');
+const mongoose = require('mongoose');
 
 // Get all debts
 router.get('/', async (req, res) => {
@@ -73,6 +74,11 @@ router.post('/', async (req, res) => {
 // Update a debt
 router.put('/:id', async (req, res) => {
   try {
+    // Kiểm tra ID hợp lệ
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'ID không hợp lệ' });
+    }
+    
     // Get the original debt to compare changes
     const originalDebt = await Debt.findById(req.params.id);
     if (!originalDebt) {
@@ -150,6 +156,11 @@ router.put('/:id', async (req, res) => {
 // Delete a debt
 router.delete('/:id', async (req, res) => {
   try {
+    // Kiểm tra ID hợp lệ
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'ID không hợp lệ' });
+    }
+    
     const debt = await Debt.findById(req.params.id);
     
     if (!debt) {

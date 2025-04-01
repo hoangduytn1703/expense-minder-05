@@ -1,3 +1,4 @@
+
 import { toast } from "@/hooks/use-toast";
 
 // API URL - lấy từ biến môi trường
@@ -77,12 +78,28 @@ export const incomeAPI = {
     });
   },
   update: async (id: string, income: Partial<Income>): Promise<Income> => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID thu nhập không hợp lệ",
+        variant: "destructive",
+      });
+      throw new Error("ID thu nhập không hợp lệ");
+    }
     return fetchAPI(`/incomes/${id}`, {
       method: "PUT",
       body: JSON.stringify(income),
     });
   },
   delete: async (id: string): Promise<void> => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID thu nhập không hợp lệ",
+        variant: "destructive",
+      });
+      throw new Error("ID thu nhập không hợp lệ");
+    }
     return fetchAPI(`/incomes/${id}`, {
       method: "DELETE",
     });
@@ -101,12 +118,28 @@ export const expenseAPI = {
     });
   },
   update: async (id: string, expense: Partial<Expense>): Promise<Expense> => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID chi tiêu không hợp lệ",
+        variant: "destructive",
+      });
+      throw new Error("ID chi tiêu không hợp lệ");
+    }
     return fetchAPI(`/expenses/${id}`, {
       method: "PUT",
       body: JSON.stringify(expense),
     });
   },
   delete: async (id: string): Promise<void> => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID chi tiêu không hợp lệ",
+        variant: "destructive",
+      });
+      throw new Error("ID chi tiêu không hợp lệ");
+    }
     return fetchAPI(`/expenses/${id}`, {
       method: "DELETE",
     });
@@ -125,12 +158,28 @@ export const debtAPI = {
     });
   },
   update: async (id: string, debt: Partial<Debt>): Promise<Debt> => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID khoản nợ không hợp lệ",
+        variant: "destructive",
+      });
+      throw new Error("ID khoản nợ không hợp lệ");
+    }
     return fetchAPI(`/debts/${id}`, {
       method: "PUT",
       body: JSON.stringify(debt),
     });
   },
   delete: async (id: string): Promise<void> => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID khoản nợ không hợp lệ",
+        variant: "destructive",
+      });
+      throw new Error("ID khoản nợ không hợp lệ");
+    }
     return fetchAPI(`/debts/${id}`, {
       method: "DELETE",
     });

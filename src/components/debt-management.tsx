@@ -164,6 +164,15 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   
   // Delete a debt
   const deleteDebt = async (id: string) => {
+    if (!id) {
+      toast({
+        title: "Lỗi",
+        description: "ID khoản nợ không hợp lệ",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (window.confirm("Bạn có chắc muốn xóa khoản nợ này không?")) {
       try {
         await debtAPI.delete(id);
@@ -177,6 +186,11 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
         onUpdate();
       } catch (error) {
         console.error("Error deleting debt:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể xóa khoản nợ. Vui lòng thử lại sau.",
+          variant: "destructive",
+        });
       }
     }
   };

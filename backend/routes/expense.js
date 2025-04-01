@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Expense = require('../models/expense');
+const mongoose = require('mongoose');
 
 // Get all expenses
 router.get('/', async (req, res) => {
@@ -35,6 +36,11 @@ router.post('/', async (req, res) => {
 // Update an expense
 router.put('/:id', async (req, res) => {
   try {
+    // Kiểm tra ID hợp lệ
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'ID không hợp lệ' });
+    }
+    
     const updatedExpense = await Expense.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -54,6 +60,11 @@ router.put('/:id', async (req, res) => {
 // Delete an expense
 router.delete('/:id', async (req, res) => {
   try {
+    // Kiểm tra ID hợp lệ
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'ID không hợp lệ' });
+    }
+    
     const expense = await Expense.findByIdAndDelete(req.params.id);
     
     if (!expense) {
