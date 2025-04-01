@@ -17,12 +17,12 @@ export default function DebtsPage() {
   }, [navigate]);
   
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background dark:bg-gray-900">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
         <main className="flex-1 p-6">
-          <h1 className="text-2xl font-bold mb-6">Quản lý nợ</h1>
+          <h1 className="text-2xl font-bold mb-6 dark:text-white">Quản lý nợ</h1>
           <DebtManagement onUpdate={() => {}} />
         </main>
       </div>

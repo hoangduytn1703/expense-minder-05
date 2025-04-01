@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Debt, debtAPI } from "@/lib/api";
-import { formatCurrency, calculateMonthlyPayment, getMonthOptions, getYearOptions } from "@/lib/utils";
+import { formatCurrency, calculateMonthlyPayment, getMonthOptions, getYearOptions, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 interface DebtManagementProps {
@@ -25,6 +25,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   // Form fields for new debt
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
+  const [formattedTotalAmount, setFormattedTotalAmount] = useState("");
   const [months, setMonths] = useState(1);
   const [startMonth, setStartMonth] = useState(new Date().getMonth() + 1);
   const [startYear, setStartYear] = useState(new Date().getFullYear());
@@ -33,6 +34,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   // Form fields for editing
   const [editName, setEditName] = useState("");
   const [editTotalAmount, setEditTotalAmount] = useState(0);
+  const [editFormattedTotalAmount, setEditFormattedTotalAmount] = useState("");
   const [editMonths, setEditMonths] = useState(1);
   const [editStartMonth, setEditStartMonth] = useState(1);
   const [editStartYear, setEditStartYear] = useState(new Date().getFullYear());
@@ -71,6 +73,20 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   useEffect(() => {
     fetchDebts();
   }, []);
+
+  // Handle amount input change with formatting
+  const handleAmountChange = (value: string) => {
+    const formatted = formatNumberInput(value);
+    setFormattedTotalAmount(formatted);
+    setTotalAmount(parseFormattedNumber(formatted));
+  };
+
+  // Handle edit amount input change with formatting
+  const handleEditAmountChange = (value: string) => {
+    const formatted = formatNumberInput(value);
+    setEditFormattedTotalAmount(formatted);
+    setEditTotalAmount(parseFormattedNumber(formatted));
+  };
   
   // Create a new debt
   const addDebt = async () => {
@@ -121,6 +137,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
     setEditingId(debt._id || debt.id || null);
     setEditName(debt.name);
     setEditTotalAmount(debt.totalAmount);
+    setEditFormattedTotalAmount(formatNumberInput(debt.totalAmount.toString()));
     setEditMonths(debt.months);
     setEditStartMonth(debt.startMonth);
     setEditStartYear(debt.startYear);
@@ -252,9 +269,9 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                   <TableCell>
                     {editingId === (debt._id || debt.id) ? (
                       <Input
-                        type="number"
-                        value={editTotalAmount}
-                        onChange={(e) => setEditTotalAmount(Number(e.target.value))}
+                        type="text"
+                        value={editFormattedTotalAmount}
+                        onChange={(e) => handleEditAmountChange(e.target.value)}
                         className="w-28"
                       />
                     ) : (
@@ -357,9 +374,9 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                 </TableCell>
                 <TableCell>
                   <Input
-                    type="number"
-                    value={totalAmount}
-                    onChange={(e) => setTotalAmount(Number(e.target.value))}
+                    type="text"
+                    value={formattedTotalAmount}
+                    onChange={(e) => handleAmountChange(e.target.value)}
                     placeholder="Tổng nợ"
                     className="w-28"
                   />
