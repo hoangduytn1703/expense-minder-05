@@ -1,6 +1,94 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
+
+// Định dạng số tiền thành chuỗi
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'decimal',
+  }).format(amount);
+}
+
+// Danh sách các loại thu nhập
+export const incomeCategories = [
+  { id: "salary", name: "Lương cứng" },
+  { id: "freelance", name: "Freelance" },
+  { id: "bonus", name: "Thưởng/OT" },
+  { id: "debtCollection", name: "Thu nợ" },
+  { id: "previousMonth", name: "Tiền còn tháng trước" },
+  { id: "advance", name: "Tiền nhậu" },
+  { id: "hui", name: "Hụi" },
+  { id: "other", name: "Khác" }
+];
+
+// Danh sách các loại chi tiêu
+export const expenseCategories = [
+  { id: "breakfast", name: "Ăn sáng", scope: "S" },
+  { id: "lunch", name: "Ăn trưa", scope: "S" },
+  { id: "dinner", name: "Ăn tối", scope: "S" },
+  { id: "shopping", name: "Mua sắm", scope: "S" },
+  { id: "rent", name: "Tiền trọ", scope: "S" },
+  { id: "sendHome", name: "Gửi về nhà", scope: "S" },
+  { id: "transport", name: "Đi lại/ Xăng", scope: "S" },
+  { id: "fee", name: "Chi phí", scope: "S" },
+  { id: "entertainment", name: "Giải trí, yêu đương", scope: "L" },
+  { id: "longTermSaving", name: "Để dành (lâu dài)", scope: "C" },
+  { id: "emergencySaving", name: "Để dành (sơ cua, bệnh hoạn)", scope: "B" },
+  { id: "investment", name: "Đầu Tư", scope: "Đ" },
+  { id: "debtPayment", name: "Trả nợ", scope: "S" },
+  { id: "creditPayment", name: "Trả tín dụng", scope: "S" },
+  { id: "additional", name: "Phát sinh thêm", scope: "S" },
+  { id: "special", name: "Đặc biệt", scope: "S" }
+];
+
+// Lấy tên loại thu nhập từ id
+export const getIncomeCategoryName = (id: string): string => {
+  const category = incomeCategories.find(cat => cat.id === id);
+  return category ? category.name : id;
+};
+
+// Lấy tên loại chi tiêu từ id
+export const getExpenseCategoryName = (id: string): string => {
+  const category = expenseCategories.find(cat => cat.id === id);
+  return category ? category.name : id;
+};
+
+// Lấy phạm vi của loại chi tiêu từ id
+export const getExpenseCategoryScope = (id: string): string => {
+  const category = expenseCategories.find(cat => cat.id === id);
+  return category ? category.scope : "";
+};
+
+// Tạo mảng các tháng cho dropdown chọn tháng
+export const getMonthOptions = (): { value: number; label: string }[] => {
+  const options = [];
+  for (let i = 1; i <= 12; i++) {
+    options.push({ value: i, label: `Tháng ${i}` });
+  }
+  return options;
+};
+
+// Tạo mảng các năm cho dropdown chọn năm
+export const getYearOptions = (): { value: number; label: string }[] => {
+  const currentYear = new Date().getFullYear();
+  const options = [];
+  for (let i = currentYear - 2; i <= currentYear + 5; i++) {
+    options.push({ value: i, label: `${i}` });
+  }
+  return options;
+};
+
+// Tính số tiền phải trả hàng tháng cho một khoản nợ
+export const calculateMonthlyPayment = (totalAmount: number, months: number): number => {
+  if (months <= 0) return 0;
+  return Math.ceil(totalAmount / months);
+};
+
+// Tính số dư còn lại
+export const calculateRemaining = (totalIncome: number, totalExpense: number): number => {
+  return totalIncome - totalExpense;
+};
