@@ -103,10 +103,11 @@ export const getMonthOptions = (): { value: number; label: string }[] => {
   return options;
 };
 
-// Tạo mảng các năm cho dropdown chọn năm - Giới hạn từ 2025-2028
+// Tạo mảng các năm cho dropdown chọn năm
 export const getYearOptions = (): { value: number; label: string }[] => {
+  const currentYear = new Date().getFullYear();
   const options = [];
-  for (let i = 2025; i <= 2028; i++) {
+  for (let i = currentYear - 2; i <= currentYear + 5; i++) {
     options.push({ value: i, label: `${i}` });
   }
   return options;
@@ -121,9 +122,4 @@ export const calculateMonthlyPayment = (totalAmount: number, months: number): nu
 // Tính số dư còn lại
 export const calculateRemaining = (totalIncome: number, totalExpense: number): number => {
   return totalIncome - totalExpense;
-};
-
-// Tạo một delay promise có thể sử dụng với async/await
-export const delay = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
 };
