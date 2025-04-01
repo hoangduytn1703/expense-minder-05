@@ -1,14 +1,26 @@
+
 import React, { useState, useEffect } from "react";
 import { 
   Table, TableBody, TableCaption, TableCell, 
   TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PlusCircle, Pencil, Trash2, Lock } from "lucide-react";
 import { Income, incomeAPI } from "@/lib/api";
-import { formatCurrency, getIncomeCategoryName, incomeCategories, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
+import { formatCurrency, getIncomeCategoryName, incomeCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import EditIncomeDialog from "./edit-income-dialog";
+import AddIncomeDialog from "./add-income-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface IncomeTableProps {
   incomes: Income[];
@@ -25,14 +37,12 @@ export default function IncomeTable({
   categories = incomeCategories,
   onUpdate 
 }: IncomeTableProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState<string>('0');
-  const [editNote, setEditNote] = useState<string>("");
-  const [isAdding, setIsAdding] = useState(false);
-  const [newCategory, setNewCategory] = useState(categories[0].id);
-  const [newAmount, setNewAmount] = useState<string>('0');
-  const [newNote, setNewNote] = useState("");
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [incomeToDelete, setIncomeToDelete] = useState<Income | null>(null);
   
   useEffect(() => {
     const mergedIncomes: Income[] = [];
@@ -71,56 +81,11 @@ export default function IncomeTable({
       return;
     }
     
-    const actualId = income._id || income.id;
-    setEditingId(actualId || null);
-    setEditAmount(formatNumberInput(income.amount.toString()));
-    setEditNote(income.note || "");
+    setEditingIncome(income);
+    setIsEditDialogOpen(true);
   };
   
-  const saveEdit = async (id: string) => {
-    try {
-      const amount = parseFormattedNumber(editAmount);
-      await incomeAPI.update(id, { amount, note: editNote });
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật khoản thu nhập",
-      });
-      setEditingId(null);
-      onUpdate();
-    } catch (error) {
-      console.error("Lỗi khi cập nhật:", error);
-    }
-  };
-  
-  const createIncome = async (income: Income) => {
-    try {
-      const amount = parseFormattedNumber(editAmount);
-      await incomeAPI.create({
-        ...income,
-        amount,
-        note: editNote,
-      });
-      toast({
-        title: "Thành công",
-        description: "Đã tạo khoản thu nhập",
-      });
-      setEditingId(null);
-      onUpdate();
-    } catch (error) {
-      console.error("Lỗi khi tạo:", error);
-    }
-  };
-  
-  const handleSave = (income: Income) => {
-    const id = income._id || income.id;
-    if (id) {
-      saveEdit(id);
-    } else {
-      createIncome(income);
-    }
-  };
-  
-  const deleteIncome = async (income: Income) => {
+  const confirmDelete = (income: Income) => {
     if (income.category === 'previousMonth') {
       toast({
         title: "Không thể xóa",
@@ -139,63 +104,32 @@ export default function IncomeTable({
       return;
     }
     
-    if (window.confirm("Bạn có chắc muốn xóa mục này không?")) {
-      try {
-        await incomeAPI.delete(id);
-        toast({
-          title: "Thành công",
-          description: "Đã xóa khoản thu nhập",
-        });
-        onUpdate();
-      } catch (error) {
-        console.error("Lỗi khi xóa:", error);
-      }
-    }
+    setIncomeToDelete(income);
+    setDeleteConfirmOpen(true);
   };
   
-  const addIncome = async () => {
-    if (newCategory === 'previousMonth') {
-      toast({
-        title: "Không thể thêm",
-        description: "Không thể thêm khoản tiền còn lại từ tháng trước thủ công",
-        variant: "destructive",
-      });
-      return;
-    }
+  const deleteIncome = async () => {
+    if (!incomeToDelete) return;
+    
+    const id = incomeToDelete._id || incomeToDelete.id;
+    if (!id) return;
     
     try {
-      const amount = parseFormattedNumber(newAmount);
-      await incomeAPI.create({
-        month,
-        year,
-        category: newCategory,
-        amount,
-        note: newNote,
-      });
-      
+      await incomeAPI.delete(id);
       toast({
         title: "Thành công",
-        description: "Đã thêm khoản thu nhập mới",
+        description: "Đã xóa khoản thu nhập",
       });
-      
-      setIsAdding(false);
-      setNewCategory(categories[0].id);
-      setNewAmount('0');
-      setNewNote("");
       onUpdate();
     } catch (error) {
-      console.error("Lỗi khi thêm:", error);
+      console.error("Lỗi khi xóa:", error);
+    } finally {
+      setDeleteConfirmOpen(false);
+      setIncomeToDelete(null);
     }
-  };
-  
-  const handleAmountChange = (value: string, setterFunction: React.Dispatch<React.SetStateAction<string>>) => {
-    const formattedValue = formatNumberInput(value);
-    setterFunction(formattedValue);
   };
   
   const isPreviousMonth = (category: string) => category === 'previousMonth';
-  
-  const availableCategories = categories.filter(cat => cat.id !== 'previousMonth');
   
   return (
     <div>
@@ -212,7 +146,6 @@ export default function IncomeTable({
         <TableBody>
           {displayedIncomes.map((income) => {
             const actualId = income._id || income.id;
-            const isEditing = editingId === actualId;
             const isPreviousMonthItem = isPreviousMonth(income.category);
             
             return (
@@ -224,110 +157,44 @@ export default function IncomeTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  {isEditing ? (
-                    <Input
-                      type="text"
-                      value={editAmount}
-                      onChange={(e) => handleAmountChange(e.target.value, setEditAmount)}
-                      className="w-32"
-                    />
-                  ) : (
-                    `${formatCurrency(income.amount)} đ`
-                  )}
+                  {formatCurrency(income.amount)} đ
                 </TableCell>
                 <TableCell>
-                  {isEditing ? (
-                    <Input
-                      value={editNote}
-                      onChange={(e) => setEditNote(e.target.value)}
-                    />
-                  ) : (
-                    income.note || ""
-                  )}
+                  {income.note || ""}
                 </TableCell>
                 <TableCell className="text-right">
-                  {isEditing ? (
-                    <Button size="sm" onClick={() => handleSave(income)} type="button">
-                      Lưu
-                    </Button>
-                  ) : (
-                    <div className="flex justify-end space-x-2">
-                      {!isPreviousMonthItem && (
-                        <>
+                  <div className="flex justify-end space-x-2">
+                    {!isPreviousMonthItem && (
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => startEditing(income)}
+                          type="button"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {actualId && (
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => startEditing(income)}
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => confirmDelete(income)}
                             type="button"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          {actualId && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => deleteIncome(income)}
-                              type="button"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {isPreviousMonthItem && (
-                        <span className="text-sm text-gray-500 italic">Tự động cập nhật</span>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </>
+                    )}
+                    {isPreviousMonthItem && (
+                      <span className="text-sm text-gray-500 italic">Tự động cập nhật</span>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );
           })}
-          
-          {isAdding && (
-            <TableRow>
-              <TableCell>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                >
-                  {availableCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </TableCell>
-              <TableCell>
-                <Input
-                  type="text"
-                  value={newAmount}
-                  onChange={(e) => handleAmountChange(e.target.value, setNewAmount)}
-                  placeholder="Số tiền"
-                  className="w-32"
-                />
-              </TableCell>
-              <TableCell>
-                <Input
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Ghi chú"
-                />
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end space-x-2">
-                  <Button size="sm" onClick={addIncome} type="button">
-                    Lưu
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} type="button">
-                    Hủy
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
       
@@ -335,8 +202,7 @@ export default function IncomeTable({
         <Button
           variant="outline"
           className="flex items-center gap-2"
-          onClick={() => setIsAdding(true)}
-          disabled={isAdding}
+          onClick={() => setIsAddDialogOpen(true)}
           type="button"
         >
           <PlusCircle className="h-4 w-4" /> Thêm
@@ -345,6 +211,44 @@ export default function IncomeTable({
           TỔNG THU NHẬP: {formatCurrency(totalIncome)} đ
         </div>
       </div>
+
+      {/* Edit dialog */}
+      {editingIncome && (
+        <EditIncomeDialog
+          income={editingIncome}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={onUpdate}
+        />
+      )}
+
+      {/* Add dialog */}
+      <AddIncomeDialog
+        month={month}
+        year={year}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSave={onUpdate}
+        categories={categories}
+      />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa khoản thu nhập này không? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteIncome} className="bg-red-500 hover:bg-red-600">
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

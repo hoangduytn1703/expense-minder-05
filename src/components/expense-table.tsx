@@ -5,11 +5,22 @@ import {
   TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Expense, expenseAPI } from "@/lib/api";
-import { formatCurrency, getExpenseCategoryName, expenseCategories, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
+import { formatCurrency, getExpenseCategoryName, expenseCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import EditExpenseDialog from "./edit-expense-dialog";
+import AddExpenseDialog from "./add-expense-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -26,35 +37,25 @@ export default function ExpenseTable({
   categories = expenseCategories,
   onUpdate 
 }: ExpenseTableProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState<string>('0');
-  const [editActualAmount, setEditActualAmount] = useState<string>('');
-  const [editNote, setEditNote] = useState<string>("");
-  
-  const [isAdding, setIsAdding] = useState(false);
-  const [newCategory, setNewCategory] = useState(categories[0].id);
-  const [newAmount, setNewAmount] = useState<string>('0');
-  const [newActualAmount, setNewActualAmount] = useState<string>('');
-  const [newNote, setNewNote] = useState("");
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
   
-  // Chuẩn bị dữ liệu để hiển thị tất cả các loại chi tiêu
   useEffect(() => {
     const mergedExpenses: Expense[] = [];
     
-    // Tạo map từ dữ liệu hiện có
     const expenseMap = new Map();
     expenses.forEach(expense => {
       expenseMap.set(expense.category, expense);
     });
     
-    // Đảm bảo tất cả các loại chi tiêu đều được hiển thị
     categories.forEach(category => {
       if (expenseMap.has(category.id)) {
-        // Nếu đã có dữ liệu cho loại này, sử dụng nó
         mergedExpenses.push(expenseMap.get(category.id));
       } else {
-        // Nếu chưa có, tạo mục mới với số tiền là 0
         mergedExpenses.push({
           category: category.id,
           month,
@@ -69,79 +70,14 @@ export default function ExpenseTable({
     setDisplayedExpenses(mergedExpenses);
   }, [expenses, categories, month, year]);
   
-  // Tính tổng chi tiêu
   const totalExpense = displayedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   
-  // Bắt đầu chỉnh sửa một mục
   const startEditing = (expense: Expense) => {
-    const actualId = expense._id || expense.id;
-    setEditingId(actualId || null);
-    setEditAmount(formatNumberInput(expense.amount.toString()));
-    setEditActualAmount(expense.actualAmount ? formatNumberInput(expense.actualAmount.toString()) : '');
-    setEditNote(expense.note || "");
+    setEditingExpense(expense);
+    setIsEditDialogOpen(true);
   };
   
-  // Lưu chỉnh sửa
-  const saveEdit = async (id: string) => {
-    try {
-      const amount = parseFormattedNumber(editAmount);
-      const actualAmount = editActualAmount ? parseFormattedNumber(editActualAmount) : undefined;
-      
-      await expenseAPI.update(id, { 
-        amount, 
-        actualAmount,
-        note: editNote 
-      });
-      
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật khoản chi tiêu",
-      });
-      
-      setEditingId(null);
-      onUpdate();
-    } catch (error) {
-      console.error("Lỗi khi cập nhật:", error);
-    }
-  };
-  
-  // Thêm mới một mục không có sẵn ID
-  const createExpense = async (expense: Expense) => {
-    try {
-      const amount = parseFormattedNumber(editAmount);
-      const actualAmount = editActualAmount ? parseFormattedNumber(editActualAmount) : undefined;
-      
-      await expenseAPI.create({
-        ...expense,
-        amount,
-        actualAmount,
-        note: editNote,
-      });
-      
-      toast({
-        title: "Thành công",
-        description: "Đã tạo khoản chi tiêu",
-      });
-      
-      setEditingId(null);
-      onUpdate();
-    } catch (error) {
-      console.error("Lỗi khi tạo:", error);
-    }
-  };
-  
-  // Xử lý lưu chỉnh sửa
-  const handleSave = (expense: Expense) => {
-    const id = expense._id || expense.id;
-    if (id) {
-      saveEdit(id);
-    } else {
-      createExpense(expense);
-    }
-  };
-  
-  // Xóa một mục
-  const deleteExpense = async (expense: Expense) => {
+  const confirmDelete = (expense: Expense) => {
     const id = expense._id || expense.id;
     if (!id) {
       toast({
@@ -151,59 +87,29 @@ export default function ExpenseTable({
       return;
     }
     
-    if (window.confirm("Bạn có chắc muốn xóa mục này không?")) {
-      try {
-        await expenseAPI.delete(id);
-        
-        toast({
-          title: "Thành công",
-          description: "Đã xóa khoản chi tiêu",
-        });
-        
-        onUpdate();
-      } catch (error) {
-        console.error("Lỗi khi xóa:", error);
-      }
-    }
+    setExpenseToDelete(expense);
+    setDeleteConfirmOpen(true);
   };
   
-  // Thêm mục mới
-  const addExpense = async () => {
+  const deleteExpense = async () => {
+    if (!expenseToDelete) return;
+    
+    const id = expenseToDelete._id || expenseToDelete.id;
+    if (!id) return;
+    
     try {
-      const selectedCategory = categories.find(cat => cat.id === newCategory);
-      const amount = parseFormattedNumber(newAmount);
-      const actualAmount = newActualAmount ? parseFormattedNumber(newActualAmount) : undefined;
-      
-      await expenseAPI.create({
-        month,
-        year,
-        category: newCategory,
-        scope: selectedCategory?.scope || "S",
-        amount,
-        actualAmount,
-        note: newNote,
-      });
-      
+      await expenseAPI.delete(id);
       toast({
         title: "Thành công",
-        description: "Đã thêm khoản chi tiêu mới",
+        description: "Đã xóa khoản chi tiêu",
       });
-      
-      setIsAdding(false);
-      setNewCategory(categories[0].id);
-      setNewAmount('0');
-      setNewActualAmount('');
-      setNewNote("");
       onUpdate();
     } catch (error) {
-      console.error("Lỗi khi thêm:", error);
+      console.error("Lỗi khi xóa:", error);
+    } finally {
+      setDeleteConfirmOpen(false);
+      setExpenseToDelete(null);
     }
-  };
-  
-  // Xử lý thay đổi số tiền với định dạng
-  const handleAmountChange = (value: string, setterFunction: React.Dispatch<React.SetStateAction<string>>) => {
-    const formattedValue = formatNumberInput(value);
-    setterFunction(formattedValue);
   };
   
   return (
@@ -222,140 +128,43 @@ export default function ExpenseTable({
         </TableHeader>
         <TableBody>
           {displayedExpenses.map((expense) => {
-            const category = categories.find(cat => cat.id === expense.category);
             const actualId = expense._id || expense.id;
-            const isEditing = editingId === actualId;
             
             return (
               <TableRow key={expense.category}>
                 <TableCell>{getExpenseCategoryName(expense.category)}</TableCell>
                 <TableCell>{expense.scope}</TableCell>
+                <TableCell>{formatCurrency(expense.amount)} đ</TableCell>
                 <TableCell>
-                  {isEditing ? (
-                    <Input
-                      type="text"
-                      value={editAmount}
-                      onChange={(e) => handleAmountChange(e.target.value, setEditAmount)}
-                      className="w-28"
-                    />
-                  ) : (
-                    `${formatCurrency(expense.amount)} đ`
-                  )}
+                  {expense.actualAmount ? `${formatCurrency(expense.actualAmount)} đ` : ""}
                 </TableCell>
-                <TableCell>
-                  {isEditing ? (
-                    <Input
-                      type="text"
-                      value={editActualAmount}
-                      onChange={(e) => handleAmountChange(e.target.value, setEditActualAmount)}
-                      className="w-28"
-                      placeholder="Thực tế"
-                    />
-                  ) : (
-                    expense.actualAmount ? `${formatCurrency(expense.actualAmount)} đ` : ""
-                  )}
-                </TableCell>
-                <TableCell>
-                  {isEditing ? (
-                    <Input
-                      value={editNote}
-                      onChange={(e) => setEditNote(e.target.value)}
-                    />
-                  ) : (
-                    expense.note || ""
-                  )}
-                </TableCell>
+                <TableCell>{expense.note || ""}</TableCell>
                 <TableCell className="text-right">
-                  {isEditing ? (
-                    <Button size="sm" onClick={() => handleSave(expense)} type="button">
-                      Lưu
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => startEditing(expense)}
+                      type="button"
+                    >
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                  ) : (
-                    <div className="flex justify-end space-x-2">
+                    {actualId && (
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => startEditing(expense)}
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => confirmDelete(expense)}
                         type="button"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                      {actualId && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => deleteExpense(expense)}
-                          type="button"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );
           })}
-          
-          {isAdding && (
-            <TableRow>
-              <TableCell>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </TableCell>
-              <TableCell>
-                {(() => {
-                  const selectedCategory = categories.find(cat => cat.id === newCategory);
-                  return selectedCategory?.scope || "";
-                })()}
-              </TableCell>
-              <TableCell>
-                <Input
-                  type="text"
-                  value={newAmount}
-                  onChange={(e) => handleAmountChange(e.target.value, setNewAmount)}
-                  placeholder="Số tiền"
-                  className="w-28"
-                />
-              </TableCell>
-              <TableCell>
-                <Input
-                  type="text"
-                  value={newActualAmount}
-                  onChange={(e) => handleAmountChange(e.target.value, setNewActualAmount)}
-                  placeholder="Thực tế"
-                  className="w-28"
-                />
-              </TableCell>
-              <TableCell>
-                <Input
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Ghi chú"
-                />
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end space-x-2">
-                  <Button size="sm" onClick={addExpense} type="button">
-                    Lưu
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} type="button">
-                    Hủy
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
       
@@ -363,8 +172,7 @@ export default function ExpenseTable({
         <Button
           variant="outline"
           className="flex items-center gap-2"
-          onClick={() => setIsAdding(true)}
-          disabled={isAdding}
+          onClick={() => setIsAddDialogOpen(true)}
           type="button"
         >
           <PlusCircle className="h-4 w-4" /> Thêm
@@ -373,6 +181,44 @@ export default function ExpenseTable({
           TỔNG CHI TIÊU: {formatCurrency(totalExpense)} đ
         </div>
       </div>
+
+      {/* Edit dialog */}
+      {editingExpense && (
+        <EditExpenseDialog
+          expense={editingExpense}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={onUpdate}
+        />
+      )}
+
+      {/* Add dialog */}
+      <AddExpenseDialog
+        month={month}
+        year={year}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSave={onUpdate}
+        categories={categories}
+      />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa khoản chi tiêu này không? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteExpense} className="bg-red-500 hover:bg-red-600">
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -28,18 +27,15 @@ export default function DashboardPage() {
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   
-  // Kiểm tra xác thực
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/");
     }
   }, [navigate]);
   
-  // Tải dữ liệu khi tháng hoặc năm thay đổi
   const loadData = async () => {
     setLoading(true);
     try {
-      // Tải dữ liệu tổng quan
       const summary = await summaryAPI.getMonthSummary(month, year);
       console.log("Summary data:", summary);
       
@@ -48,29 +44,24 @@ export default function DashboardPage() {
       setRemaining(summary.remaining);
       setPreviousMonthRemaining(summary.previousMonthRemaining);
       
-      // Tải thu nhập
       const incomesData = await incomeAPI.getByMonth(month, year);
       setIncomes(incomesData);
       
-      // Tải chi tiêu
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
       
-      // Cập nhật khoản còn lại của tháng trước nếu cần
       if (summary.shouldUpdatePreviousMonth) {
         console.log("Updating previous month remaining:", summary.previousMonthRemaining);
         await updatePreviousMonthRemaining(summary.previousMonthRemaining);
-        // Reload data after updating previous month remaining to ensure consistency
+        
         const updatedSummary = await summaryAPI.getMonthSummary(month, year);
         setTotalIncome(updatedSummary.totalIncome);
         setRemaining(updatedSummary.remaining);
         
-        // Reload incomes to reflect updated previousMonth entry
         const updatedIncomesData = await incomeAPI.getByMonth(month, year);
         setIncomes(updatedIncomesData);
       }
       
-      // Chuẩn bị dữ liệu hiển thị cho tất cả các danh mục
       prepareDisplayData(
         summary.shouldUpdatePreviousMonth ? await incomeAPI.getByMonth(month, year) : incomesData, 
         expensesData
@@ -83,9 +74,7 @@ export default function DashboardPage() {
     }
   };
   
-  // Chuẩn bị dữ liệu hiển thị đầy đủ cho tất cả các danh mục
   const prepareDisplayData = (incomesData: Income[], expensesData: Expense[]) => {
-    // Chuẩn bị dữ liệu thu nhập
     const incomeMap = new Map();
     incomesData.forEach(income => {
       incomeMap.set(income.category, income);
@@ -107,7 +96,6 @@ export default function DashboardPage() {
     });
     setDisplayedIncomes(fullIncomes);
     
-    // Chuẩn bị dữ liệu chi tiêu
     const expenseMap = new Map();
     expensesData.forEach(expense => {
       expenseMap.set(expense.category, expense);
@@ -135,14 +123,11 @@ export default function DashboardPage() {
     loadData();
   }, [month, year]);
   
-  // Hàm cập nhật khoản còn lại tháng trước
   const updatePreviousMonthRemaining = async (amount: number) => {
     try {
-      // Kiểm tra xem đã có mục "Tiền còn tháng trước" chưa
       const previousMonthEntry = incomes.find(income => income.category === "previousMonth");
       
       if (previousMonthEntry) {
-        // Cập nhật nếu đã tồn tại và số tiền khác nhau
         if (previousMonthEntry.amount !== amount) {
           const id = previousMonthEntry._id || previousMonthEntry.id;
           if (id) {
@@ -154,7 +139,6 @@ export default function DashboardPage() {
           }
         }
       } else if (amount > 0) {
-        // Thêm mới nếu chưa tồn tại và số tiền > 0
         await incomeAPI.create({
           month,
           year,
@@ -169,13 +153,11 @@ export default function DashboardPage() {
     }
   };
   
-  // Xử lý khi tháng/năm thay đổi
   const handleMonthChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
   };
 
-  // Handle updates to income or expenses
   const handleDataUpdate = async () => {
     await loadData();
   };
