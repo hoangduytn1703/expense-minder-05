@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   Table, TableBody, TableCaption, TableCell, 
@@ -6,7 +5,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, Lock } from "lucide-react";
 import { Income, incomeAPI } from "@/lib/api";
 import { formatCurrency, getIncomeCategoryName, incomeCategories, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -35,23 +34,18 @@ export default function IncomeTable({
   const [newNote, setNewNote] = useState("");
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
   
-  // Chuẩn bị dữ liệu để hiển thị tất cả các loại thu nhập
   useEffect(() => {
     const mergedIncomes: Income[] = [];
     
-    // Tạo map từ dữ liệu hiện có
     const incomeMap = new Map();
     incomes.forEach(income => {
       incomeMap.set(income.category, income);
     });
     
-    // Đảm bảo tất cả các loại thu nhập đều được hiển thị
     categories.forEach(category => {
       if (incomeMap.has(category.id)) {
-        // Nếu đã có dữ liệu cho loại này, sử dụng nó
         mergedIncomes.push(incomeMap.get(category.id));
       } else {
-        // Nếu chưa có, tạo mục mới với số tiền là 0
         mergedIncomes.push({
           category: category.id,
           month,
@@ -65,18 +59,24 @@ export default function IncomeTable({
     setDisplayedIncomes(mergedIncomes);
   }, [incomes, categories, month, year]);
   
-  // Tính tổng thu nhập
   const totalIncome = displayedIncomes.reduce((sum, income) => sum + income.amount, 0);
   
-  // Bắt đầu chỉnh sửa một mục
   const startEditing = (income: Income) => {
+    if (income.category === 'previousMonth') {
+      toast({
+        title: "Không thể chỉnh sửa",
+        description: "Không thể chỉnh sửa khoản tiền còn lại từ tháng trước",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const actualId = income._id || income.id;
     setEditingId(actualId || null);
     setEditAmount(formatNumberInput(income.amount.toString()));
     setEditNote(income.note || "");
   };
   
-  // Lưu chỉnh sửa
   const saveEdit = async (id: string) => {
     try {
       const amount = parseFormattedNumber(editAmount);
@@ -92,7 +92,6 @@ export default function IncomeTable({
     }
   };
   
-  // Thêm mới một mục không có sẵn ID
   const createIncome = async (income: Income) => {
     try {
       const amount = parseFormattedNumber(editAmount);
@@ -112,7 +111,6 @@ export default function IncomeTable({
     }
   };
   
-  // Xử lý lưu chỉnh sửa
   const handleSave = (income: Income) => {
     const id = income._id || income.id;
     if (id) {
@@ -122,8 +120,16 @@ export default function IncomeTable({
     }
   };
   
-  // Xóa một mục
   const deleteIncome = async (income: Income) => {
+    if (income.category === 'previousMonth') {
+      toast({
+        title: "Không thể xóa",
+        description: "Không thể xóa khoản tiền còn lại từ tháng trước",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const id = income._id || income.id;
     if (!id) {
       toast({
@@ -147,8 +153,16 @@ export default function IncomeTable({
     }
   };
   
-  // Thêm mục mới
   const addIncome = async () => {
+    if (newCategory === 'previousMonth') {
+      toast({
+        title: "Không thể thêm",
+        description: "Không thể thêm khoản tiền còn lại từ tháng trước thủ công",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const amount = parseFormattedNumber(newAmount);
       await incomeAPI.create({
@@ -174,11 +188,14 @@ export default function IncomeTable({
     }
   };
   
-  // Xử lý thay đổi số tiền với định dạng
   const handleAmountChange = (value: string, setterFunction: React.Dispatch<React.SetStateAction<string>>) => {
     const formattedValue = formatNumberInput(value);
     setterFunction(formattedValue);
   };
+  
+  const isPreviousMonth = (category: string) => category === 'previousMonth';
+  
+  const availableCategories = categories.filter(cat => cat.id !== 'previousMonth');
   
   return (
     <div>
@@ -196,10 +213,16 @@ export default function IncomeTable({
           {displayedIncomes.map((income) => {
             const actualId = income._id || income.id;
             const isEditing = editingId === actualId;
+            const isPreviousMonthItem = isPreviousMonth(income.category);
             
             return (
               <TableRow key={income.category}>
-                <TableCell>{getIncomeCategoryName(income.category)}</TableCell>
+                <TableCell>
+                  {getIncomeCategoryName(income.category)}
+                  {isPreviousMonthItem && (
+                    <Lock className="h-3 w-3 ml-1 inline text-gray-500" />
+                  )}
+                </TableCell>
                 <TableCell>
                   {isEditing ? (
                     <Input
@@ -229,24 +252,31 @@ export default function IncomeTable({
                     </Button>
                   ) : (
                     <div className="flex justify-end space-x-2">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => startEditing(income)}
-                        type="button"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {actualId && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => deleteIncome(income)}
-                          type="button"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      {!isPreviousMonthItem && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => startEditing(income)}
+                            type="button"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {actualId && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => deleteIncome(income)}
+                              type="button"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {isPreviousMonthItem && (
+                        <span className="text-sm text-gray-500 italic">Tự động cập nhật</span>
                       )}
                     </div>
                   )}
@@ -263,7 +293,7 @@ export default function IncomeTable({
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                 >
-                  {categories.map((cat) => (
+                  {availableCategories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
