@@ -11,8 +11,9 @@ import IncomeTable from "@/components/income-table";
 import ExpenseTable from "@/components/expense-table";
 import DebtManagement from "@/components/debt-management";
 import { Income, Expense, incomeAPI, expenseAPI, summaryAPI } from "@/lib/api";
-import { incomeCategories, expenseCategories, getYearOptions } from "@/lib/utils";
+import { incomeCategories, expenseCategories, getYearOptions, delay } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -37,17 +38,24 @@ export default function DashboardPage() {
   
   useEffect(() => {
     if (!isDataUpdating) {
-      loadData();
+      loadData(true);
     }
   }, [month, year]);
   
-  const loadData = async () => {
+  const loadData = async (isMonthChange = false) => {
     if (isDataUpdating) return;
     
     setIsDataUpdating(true);
     setLoading(true);
+    
     try {
       console.log("Fetching summary data for month:", month, "year:", year);
+      
+      // Thêm delay 1 giây để đảm bảo các API call trước đó đã hoàn thành
+      if (!isMonthChange) {
+        await delay(1000);
+      }
+      
       const summary = await summaryAPI.getMonthSummary(month, year);
       console.log("Summary data:", summary);
       
@@ -67,7 +75,10 @@ export default function DashboardPage() {
         console.log("Updating previous month remaining:", summary.previousMonthRemaining);
         await updatePreviousMonthRemaining(summary.previousMonthRemaining);
         
-        // After updating the previous month entry, refetch all data to ensure consistency
+        // Thêm delay 1 giây sau khi cập nhật dữ liệu tháng trước
+        await delay(1000);
+        
+        // Sau khi cập nhật khoản tháng trước, lấy lại toàn bộ dữ liệu để đảm bảo tính nhất quán
         const updatedSummary = await summaryAPI.getMonthSummary(month, year);
         console.log("Updated summary after previousMonth update:", updatedSummary);
         setTotalIncome(updatedSummary.totalIncome);
@@ -89,6 +100,8 @@ export default function DashboardPage() {
         variant: "destructive",
       });
     } finally {
+      // Đảm bảo có ít nhất 1 giây load để người dùng nhận biết đang tải
+      await delay(1000);
       setLoading(false);
       setIsDataUpdating(false);
     }
@@ -193,7 +206,7 @@ export default function DashboardPage() {
 
   const handleDataUpdate = async () => {
     console.log("Data update triggered");
-    await loadData();
+    await loadData(false);
   };
   
   return (
@@ -209,11 +222,15 @@ export default function DashboardPage() {
               month={month} 
               year={year} 
               onChange={handleMonthChange} 
+              disabled={isDataUpdating}
             />
           </div>
           
           {loading ? (
-            <div className="text-center py-10">Đang tải dữ liệu...</div>
+            <div className="flex flex-col items-center justify-center py-10 space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div>Đang tải dữ liệu...</div>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -242,7 +259,8 @@ export default function DashboardPage() {
                       month={month} 
                       year={year}
                       categories={incomeCategories}
-                      onUpdate={handleDataUpdate} 
+                      onUpdate={handleDataUpdate}
+                      isLoading={isDataUpdating}
                     />
                   ),
                   expenseTab: (
@@ -251,7 +269,8 @@ export default function DashboardPage() {
                       month={month} 
                       year={year}
                       categories={expenseCategories}
-                      onUpdate={handleDataUpdate} 
+                      onUpdate={handleDataUpdate}
+                      isLoading={isDataUpdating}
                     />
                   ),
                 }}

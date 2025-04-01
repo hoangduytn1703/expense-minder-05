@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     
-    // Get the previousMonth entry from previous month (for all months, not just the current one)
+    // Get the income entries from previous month (excluding previousMonth category)
     const previousMonthIncomeResult = await Income.aggregate([
       { 
         $match: { 

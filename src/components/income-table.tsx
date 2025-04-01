@@ -5,7 +5,7 @@ import {
   TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Pencil, Trash2, Lock } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, Lock, Loader2 } from "lucide-react";
 import { Income, incomeAPI } from "@/lib/api";
 import { formatCurrency, getIncomeCategoryName, incomeCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ interface IncomeTableProps {
   year: number;
   categories?: typeof incomeCategories;
   onUpdate: () => void;
+  isLoading?: boolean;
 }
 
 export default function IncomeTable({ 
@@ -35,7 +36,8 @@ export default function IncomeTable({
   month, 
   year, 
   categories = incomeCategories,
-  onUpdate 
+  onUpdate,
+  isLoading = false
 }: IncomeTableProps) {
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
@@ -43,6 +45,7 @@ export default function IncomeTable({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [incomeToDelete, setIncomeToDelete] = useState<Income | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
     const mergedIncomes: Income[] = [];
@@ -72,6 +75,8 @@ export default function IncomeTable({
   const totalIncome = displayedIncomes.reduce((sum, income) => sum + income.amount, 0);
   
   const startEditing = (income: Income) => {
+    if (isLoading || isSaving) return;
+    
     if (income.category === 'previousMonth') {
       toast({
         title: "Không thể chỉnh sửa",
@@ -86,6 +91,8 @@ export default function IncomeTable({
   };
   
   const confirmDelete = (income: Income) => {
+    if (isLoading || isSaving) return;
+    
     if (income.category === 'previousMonth') {
       toast({
         title: "Không thể xóa",
@@ -109,10 +116,15 @@ export default function IncomeTable({
   };
   
   const deleteIncome = async () => {
-    if (!incomeToDelete) return;
+    if (!incomeToDelete || isLoading) return;
+    
+    setIsSaving(true);
     
     const id = incomeToDelete._id || incomeToDelete.id;
-    if (!id) return;
+    if (!id) {
+      setIsSaving(false);
+      return;
+    }
     
     try {
       await incomeAPI.delete(id);
@@ -123,7 +135,13 @@ export default function IncomeTable({
       onUpdate();
     } catch (error) {
       console.error("Lỗi khi xóa:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa khoản thu nhập",
+        variant: "destructive",
+      });
     } finally {
+      setIsSaving(false);
       setDeleteConfirmOpen(false);
       setIncomeToDelete(null);
     }
@@ -132,7 +150,13 @@ export default function IncomeTable({
   const isPreviousMonth = (category: string) => category === 'previousMonth';
   
   return (
-    <div>
+    <div className={`relative ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/30 z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+      
       <Table>
         <TableCaption>THU NHẬP</TableCaption>
         <TableHeader className="bg-yellow-100">
@@ -171,6 +195,7 @@ export default function IncomeTable({
                           variant="ghost"
                           onClick={() => startEditing(income)}
                           type="button"
+                          disabled={isLoading || isSaving}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -181,6 +206,7 @@ export default function IncomeTable({
                             className="text-red-500 hover:text-red-700"
                             onClick={() => confirmDelete(income)}
                             type="button"
+                            disabled={isLoading || isSaving}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -204,8 +230,14 @@ export default function IncomeTable({
           className="flex items-center gap-2"
           onClick={() => setIsAddDialogOpen(true)}
           type="button"
+          disabled={isLoading || isSaving}
         >
-          <PlusCircle className="h-4 w-4" /> Thêm
+          {isLoading || isSaving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <PlusCircle className="h-4 w-4" />
+          )} 
+          Thêm
         </Button>
         <div className="font-bold">
           TỔNG THU NHẬP: {formatCurrency(totalIncome)} đ
@@ -242,8 +274,13 @@ export default function IncomeTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={deleteIncome} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogCancel disabled={isSaving}>Hủy</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deleteIncome} 
+              className="bg-red-500 hover:bg-red-600"
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

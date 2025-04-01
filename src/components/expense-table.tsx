@@ -5,7 +5,7 @@ import {
   TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Expense, expenseAPI } from "@/lib/api";
 import { formatCurrency, getExpenseCategoryName, expenseCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ interface ExpenseTableProps {
   year: number;
   categories?: typeof expenseCategories;
   onUpdate: () => void;
+  isLoading?: boolean;
 }
 
 export default function ExpenseTable({ 
@@ -35,7 +36,8 @@ export default function ExpenseTable({
   month, 
   year, 
   categories = expenseCategories,
-  onUpdate 
+  onUpdate,
+  isLoading = false
 }: ExpenseTableProps) {
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -43,6 +45,7 @@ export default function ExpenseTable({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
     const mergedExpenses: Expense[] = [];
@@ -73,11 +76,15 @@ export default function ExpenseTable({
   const totalExpense = displayedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   
   const startEditing = (expense: Expense) => {
+    if (isLoading || isSaving) return;
+    
     setEditingExpense(expense);
     setIsEditDialogOpen(true);
   };
   
   const confirmDelete = (expense: Expense) => {
+    if (isLoading || isSaving) return;
+    
     const id = expense._id || expense.id;
     if (!id) {
       toast({
@@ -92,10 +99,15 @@ export default function ExpenseTable({
   };
   
   const deleteExpense = async () => {
-    if (!expenseToDelete) return;
+    if (!expenseToDelete || isLoading) return;
+    
+    setIsSaving(true);
     
     const id = expenseToDelete._id || expenseToDelete.id;
-    if (!id) return;
+    if (!id) {
+      setIsSaving(false);
+      return;
+    }
     
     try {
       await expenseAPI.delete(id);
@@ -106,14 +118,26 @@ export default function ExpenseTable({
       onUpdate();
     } catch (error) {
       console.error("Lỗi khi xóa:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa khoản chi tiêu",
+        variant: "destructive",
+      });
     } finally {
+      setIsSaving(false);
       setDeleteConfirmOpen(false);
       setExpenseToDelete(null);
     }
   };
   
   return (
-    <div>
+    <div className={`relative ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/30 z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+      
       <Table>
         <TableCaption>CHI TIÊU</TableCaption>
         <TableHeader className="bg-red-100">
@@ -146,6 +170,7 @@ export default function ExpenseTable({
                       variant="ghost"
                       onClick={() => startEditing(expense)}
                       type="button"
+                      disabled={isLoading || isSaving}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -156,6 +181,7 @@ export default function ExpenseTable({
                         className="text-red-500 hover:text-red-700"
                         onClick={() => confirmDelete(expense)}
                         type="button"
+                        disabled={isLoading || isSaving}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -174,8 +200,14 @@ export default function ExpenseTable({
           className="flex items-center gap-2"
           onClick={() => setIsAddDialogOpen(true)}
           type="button"
+          disabled={isLoading || isSaving}
         >
-          <PlusCircle className="h-4 w-4" /> Thêm
+          {isLoading || isSaving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <PlusCircle className="h-4 w-4" />
+          )}
+          Thêm
         </Button>
         <div className="font-bold">
           TỔNG CHI TIÊU: {formatCurrency(totalExpense)} đ
@@ -212,8 +244,13 @@ export default function ExpenseTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={deleteExpense} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogCancel disabled={isSaving}>Hủy</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deleteExpense} 
+              className="bg-red-500 hover:bg-red-600"
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

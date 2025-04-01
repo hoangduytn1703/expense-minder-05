@@ -122,3 +122,8 @@ export const calculateMonthlyPayment = (totalAmount: number, months: number): nu
 export const calculateRemaining = (totalIncome: number, totalExpense: number): number => {
   return totalIncome - totalExpense;
 };
+
+// Tạo một delay promise có thể sử dụng với async/await
+export const delay = (ms: number): Promise<void> => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
