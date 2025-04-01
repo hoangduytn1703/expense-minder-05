@@ -46,11 +46,11 @@ export function parseFormattedNumber(value: string): number {
 
 // Danh sách các loại thu nhập
 export const incomeCategories = [
+  { id: "previousMonth", name: "Tiền còn tháng trước" },
   { id: "salary", name: "Lương cứng" },
   { id: "freelance", name: "Freelance" },
   { id: "bonus", name: "Thưởng/OT" },
   { id: "debtCollection", name: "Thu nợ" },
-  { id: "previousMonth", name: "Tiền còn tháng trước" },
   { id: "advance", name: "Tiền nhậu" },
   { id: "hui", name: "Hụi" },
   { id: "other", name: "Khác" }
@@ -105,9 +105,9 @@ export const getMonthOptions = (): { value: number; label: string }[] => {
 
 // Tạo mảng các năm cho dropdown chọn năm
 export const getYearOptions = (): { value: number; label: string }[] => {
-  const currentYear = new Date().getFullYear();
   const options = [];
-  for (let i = currentYear - 2; i <= currentYear + 5; i++) {
+  // Chỉ hiển thị các năm từ 2025 đến 2028
+  for (let i = 2025; i <= 2028; i++) {
     options.push({ value: i, label: `${i}` });
   }
   return options;
