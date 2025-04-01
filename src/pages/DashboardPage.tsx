@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
   const [previousMonthRemaining, setPreviousMonthRemaining] = useState(0);
+  const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
+  const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   
   // Kiểm tra xác thực
   useEffect(() => {
@@ -39,6 +41,8 @@ export default function DashboardPage() {
     try {
       // Tải dữ liệu tổng quan
       const summary = await summaryAPI.getMonthSummary(month, year);
+      console.log("Summary data:", summary);
+      
       setTotalIncome(summary.totalIncome);
       setTotalExpense(summary.totalExpense);
       setRemaining(summary.remaining);
@@ -55,11 +59,62 @@ export default function DashboardPage() {
       // Cập nhật khoản còn lại của tháng trước (nếu cần)
       await updatePreviousMonthRemaining(summary.previousMonthRemaining);
       
+      // Chuẩn bị dữ liệu hiển thị cho tất cả các danh mục
+      prepareDisplayData(incomesData, expensesData);
+      
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Chuẩn bị dữ liệu hiển thị đầy đủ cho tất cả các danh mục
+  const prepareDisplayData = (incomesData: Income[], expensesData: Expense[]) => {
+    // Chuẩn bị dữ liệu thu nhập
+    const incomeMap = new Map();
+    incomesData.forEach(income => {
+      incomeMap.set(income.category, income);
+    });
+    
+    const fullIncomes: Income[] = [];
+    incomeCategories.forEach(category => {
+      if (incomeMap.has(category.id)) {
+        fullIncomes.push(incomeMap.get(category.id));
+      } else {
+        fullIncomes.push({
+          category: category.id,
+          month,
+          year,
+          amount: 0,
+          note: ""
+        });
+      }
+    });
+    setDisplayedIncomes(fullIncomes);
+    
+    // Chuẩn bị dữ liệu chi tiêu
+    const expenseMap = new Map();
+    expensesData.forEach(expense => {
+      expenseMap.set(expense.category, expense);
+    });
+    
+    const fullExpenses: Expense[] = [];
+    expenseCategories.forEach(category => {
+      if (expenseMap.has(category.id)) {
+        fullExpenses.push(expenseMap.get(category.id));
+      } else {
+        fullExpenses.push({
+          category: category.id,
+          month,
+          year,
+          amount: 0,
+          scope: category.scope,
+          note: ""
+        });
+      }
+    });
+    setDisplayedExpenses(fullExpenses);
   };
   
   useEffect(() => {
@@ -107,24 +162,6 @@ export default function DashboardPage() {
     setYear(newYear);
   };
   
-  // Hàm tính tổng
-  const calculateTotals = () => {
-    const incomeTotal = incomes.reduce((sum, income) => sum + income.amount, 0);
-    const expenseTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const remainingAmount = incomeTotal - expenseTotal;
-    
-    setTotalIncome(incomeTotal);
-    setTotalExpense(expenseTotal);
-    setRemaining(remainingAmount);
-  };
-  
-  // Cập nhật tổng khi dữ liệu thay đổi
-  useEffect(() => {
-    if (!loading) {
-      calculateTotals();
-    }
-  }, [incomes, expenses]);
-  
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -167,7 +204,7 @@ export default function DashboardPage() {
                 {{
                   incomeTab: (
                     <IncomeTable 
-                      incomes={incomes} 
+                      incomes={displayedIncomes} 
                       month={month} 
                       year={year}
                       categories={incomeCategories}
@@ -176,7 +213,7 @@ export default function DashboardPage() {
                   ),
                   expenseTab: (
                     <ExpenseTable 
-                      expenses={expenses} 
+                      expenses={displayedExpenses} 
                       month={month} 
                       year={year}
                       categories={expenseCategories}

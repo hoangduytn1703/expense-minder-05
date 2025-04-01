@@ -84,6 +84,8 @@ router.get('/', async (req, res) => {
     const previousMonthRemaining = prevIncome - prevExpense;
     
     res.json({
+      currentMonthIncome, // Add this to fix the calculation issue
+      previousMonthAmount, // Add this to see the amount being carried over
       totalIncome,
       totalExpense,
       remaining: totalIncome - totalExpense,

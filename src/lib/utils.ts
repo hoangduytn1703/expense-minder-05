@@ -6,15 +6,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Định dạng số tiền thành chuỗi
+// Định dạng số tiền thành chuỗi với dấu phân cách
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', {
     style: 'decimal',
     useGrouping: true,
+    maximumFractionDigits: 0
   }).format(amount);
 }
 
-// Hàm định dạng đầu vào số
+// Hàm định dạng đầu vào số với dấu phân cách mỗi 3 chữ số
 export function formatNumberInput(value: string): string {
   // Loại bỏ tất cả các ký tự không phải số
   const numbers = value.replace(/[^\d]/g, '');
@@ -27,7 +28,7 @@ export function formatNumberInput(value: string): string {
     return '';
   }
   
-  // Định dạng số với dấu phân cách
+  // Định dạng số với dấu phân cách mỗi 3 chữ số
   return new Intl.NumberFormat('vi-VN').format(num);
 }
 
