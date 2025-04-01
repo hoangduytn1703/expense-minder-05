@@ -34,7 +34,6 @@ export default function DashboardPage() {
     }
   }, [navigate]);
   
-  // Tránh gọi loadData nhiều lần
   useEffect(() => {
     if (!isDataUpdating) {
       loadData();
@@ -42,7 +41,7 @@ export default function DashboardPage() {
   }, [month, year]);
   
   const loadData = async () => {
-    if (isDataUpdating) return; // Ngăn gọi lại khi đang cập nhật
+    if (isDataUpdating) return;
     
     setIsDataUpdating(true);
     setLoading(true);
@@ -51,7 +50,6 @@ export default function DashboardPage() {
       const summary = await summaryAPI.getMonthSummary(month, year);
       console.log("Summary data:", summary);
       
-      // Always update state with the latest values from the summary
       setTotalIncome(summary.totalIncome);
       setTotalExpense(summary.totalExpense);
       setRemaining(summary.remaining);
@@ -64,17 +62,14 @@ export default function DashboardPage() {
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
       
-      // Check if we need to update the previousMonth income entry
       if (summary.shouldUpdatePreviousMonth) {
         console.log("Updating previous month remaining:", summary.previousMonthRemaining);
         await updatePreviousMonthRemaining(summary.previousMonthRemaining);
         
-        // Re-fetch the summary without triggering full loadData
         const updatedSummary = await summaryAPI.getMonthSummary(month, year);
         setTotalIncome(updatedSummary.totalIncome);
         setRemaining(updatedSummary.remaining);
         
-        // Only re-fetch incomes once
         const updatedIncomesData = await incomeAPI.getByMonth(month, year);
         setIncomes(updatedIncomesData);
         prepareDisplayData(updatedIncomesData, expensesData);
@@ -141,7 +136,7 @@ export default function DashboardPage() {
   };
   
   const updatePreviousMonthRemaining = async (amount: number) => {
-    if (isDataUpdating) return; // Ngăn gọi lại khi đang cập nhật
+    if (isDataUpdating) return;
     
     try {
       const previousMonthEntry = incomes.find(income => income.category === "previousMonth");
