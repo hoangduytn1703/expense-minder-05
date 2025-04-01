@@ -79,20 +79,25 @@ router.get('/', async (req, res) => {
     const prevExpense = previousMonthExpenseResult.length > 0 ? previousMonthExpenseResult[0].total : 0;
     const calculatedPreviousMonthRemaining = prevIncome - prevExpense;
     
+    // Check if we need to update previousMonth entry
+    const shouldUpdatePreviousMonth = calculatedPreviousMonthRemaining !== previousMonthAmount;
+    
     // Total income includes both current month income and previous month's remaining
     const totalIncome = currentMonthIncome + previousMonthAmount;
     const totalExpense = expenseResult.length > 0 ? expenseResult[0].total : 0;
+    const remaining = totalIncome - totalExpense;
     
     res.json({
       currentMonthIncome,
       previousMonthAmount,
       totalIncome,
       totalExpense,
-      remaining: totalIncome - totalExpense,
+      remaining,
       previousMonthRemaining: calculatedPreviousMonthRemaining,
-      shouldUpdatePreviousMonth: calculatedPreviousMonthRemaining !== previousMonthAmount
+      shouldUpdatePreviousMonth
     });
   } catch (error) {
+    console.error('Summary API error:', error);
     res.status(500).json({ message: error.message });
   }
 });

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -27,6 +26,7 @@ export default function DashboardPage() {
   const [previousMonthRemaining, setPreviousMonthRemaining] = useState(0);
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
+  const [isDataUpdating, setIsDataUpdating] = useState(false);
   
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -34,7 +34,17 @@ export default function DashboardPage() {
     }
   }, [navigate]);
   
+  // Tránh gọi loadData nhiều lần
+  useEffect(() => {
+    if (!isDataUpdating) {
+      loadData();
+    }
+  }, [month, year]);
+  
   const loadData = async () => {
+    if (isDataUpdating) return; // Ngăn gọi lại khi đang cập nhật
+    
+    setIsDataUpdating(true);
     setLoading(true);
     try {
       console.log("Fetching summary data for month:", month, "year:", year);
@@ -59,14 +69,14 @@ export default function DashboardPage() {
         console.log("Updating previous month remaining:", summary.previousMonthRemaining);
         await updatePreviousMonthRemaining(summary.previousMonthRemaining);
         
-        // Re-fetch the data to get the updated values
+        // Re-fetch the summary without triggering full loadData
         const updatedSummary = await summaryAPI.getMonthSummary(month, year);
         setTotalIncome(updatedSummary.totalIncome);
         setRemaining(updatedSummary.remaining);
         
+        // Only re-fetch incomes once
         const updatedIncomesData = await incomeAPI.getByMonth(month, year);
         setIncomes(updatedIncomesData);
-        
         prepareDisplayData(updatedIncomesData, expensesData);
       } else {
         prepareDisplayData(incomesData, expensesData);
@@ -74,8 +84,14 @@ export default function DashboardPage() {
       
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải dữ liệu. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
+      setIsDataUpdating(false);
     }
   };
   
@@ -124,11 +140,9 @@ export default function DashboardPage() {
     setDisplayedExpenses(fullExpenses);
   };
   
-  useEffect(() => {
-    loadData();
-  }, [month, year]);
-  
   const updatePreviousMonthRemaining = async (amount: number) => {
+    if (isDataUpdating) return; // Ngăn gọi lại khi đang cập nhật
+    
     try {
       const previousMonthEntry = incomes.find(income => income.category === "previousMonth");
       
@@ -141,9 +155,6 @@ export default function DashboardPage() {
               note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`
             });
             console.log("Updated previous month entry:", amount);
-            
-            // Force a reload of the data to reflect the updated values
-            await loadData();
           }
         }
       } else if (amount > 0) {
@@ -155,12 +166,14 @@ export default function DashboardPage() {
           note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`,
         });
         console.log("Created new previous month entry:", amount);
-        
-        // Force a reload of the data to reflect the updated values
-        await loadData();
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật khoản còn lại tháng trước:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật số dư tháng trước.",
+        variant: "destructive",
+      });
     }
   };
   
