@@ -13,8 +13,9 @@ import { Income, Expense, incomeAPI, expenseAPI, summaryAPI } from "@/lib/api";
 import { incomeCategories, expenseCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { AssetsProvider, useAssets } from "@/contexts/AssetsContext";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const navigate = useNavigate();
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   const [isDataUpdating, setIsDataUpdating] = useState(false);
+  const { refreshTotalAssets } = useAssets();
   
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -72,7 +74,7 @@ export default function DashboardPage() {
       setExpenses(expensesData);
       
       // Refresh total assets after data changes
-      await summaryAPI.getTotalAssets();
+      await refreshTotalAssets();
       
       prepareDisplayData(incomesData, expensesData);
       setTimeout(() => {
@@ -152,6 +154,7 @@ export default function DashboardPage() {
   const handleDataUpdate = async () => {
     console.log("Data update triggered");
     await loadData();
+    await refreshTotalAssets();
   };
   
   return (
@@ -247,5 +250,13 @@ export default function DashboardPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <AssetsProvider>
+      <DashboardContent />
+    </AssetsProvider>
   );
 }

@@ -6,32 +6,11 @@ import {
   Settings, 
   CreditCard
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { summaryAPI } from "@/lib/api";
+import { useAssets } from "@/contexts/AssetsContext";
 import { formatCurrency } from "@/lib/utils";
 
 export default function Sidebar() {
-  const [totalAssets, setTotalAssets] = useState(0);
-  const [percentageSpent, setPercentageSpent] = useState(0);
-
-  useEffect(() => {
-    const fetchTotalAssets = async () => {
-      try {
-        const response = await summaryAPI.getTotalAssets();
-        setTotalAssets(response.totalAssets);
-        
-        // Calculate percentage spent
-        const percentSpent = response.totalAllTimeExpense 
-          ? Math.round((response.totalAllTimeExpense / response.totalAllTimeIncome) * 100)
-          : 0;
-        setPercentageSpent(percentSpent);
-      } catch (error) {
-        console.error("Error fetching total assets:", error);
-      }
-    };
-    
-    fetchTotalAssets();
-  }, []);
+  const { totalAssets, percentageSpent } = useAssets();
 
   const menuItems = [
     {

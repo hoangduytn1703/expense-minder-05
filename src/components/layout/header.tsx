@@ -3,31 +3,12 @@ import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Moon, Bell, Wallet } from "lucide-react";
-import { useState, useEffect } from "react";
-import { summaryAPI } from "@/lib/api";
+import { useAssets } from "@/contexts/AssetsContext";
 import { formatCurrency } from "@/lib/utils";
 
 export default function Header() {
   const navigate = useNavigate();
-  const [totalAssets, setTotalAssets] = useState(0);
-  
-  useEffect(() => {
-    const fetchTotalAssets = async () => {
-      try {
-        const response = await summaryAPI.getTotalAssets();
-        setTotalAssets(response.totalAssets);
-      } catch (error) {
-        console.error("Error fetching total assets:", error);
-      }
-    };
-    
-    fetchTotalAssets();
-    
-    // Set up interval to refresh data every 60 seconds
-    const intervalId = setInterval(fetchTotalAssets, 60000);
-    
-    return () => clearInterval(intervalId);
-  }, []);
+  const { totalAssets } = useAssets();
   
   const handleLogout = () => {
     logout();
