@@ -55,17 +55,6 @@ router.get('/', async (req, res) => {
       { 
         $match: { 
           month: previousMonth, 
-          year: previousYear,
-          category: { $ne: 'previousMonth' } 
-        } 
-      },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    
-    const previousMonthAllIncomeResult = await Income.aggregate([
-      { 
-        $match: { 
-          month: previousMonth, 
           year: previousYear
         } 
       },
@@ -83,8 +72,8 @@ router.get('/', async (req, res) => {
     // Get the previousMonth income entry amount if it exists
     const previousMonthAmount = previousMonthIncomeEntry ? previousMonthIncomeEntry.amount : 0;
     
-    // Calculate previous month's TOTAL income (including any previousMonth entry in that month)
-    const prevTotalIncome = previousMonthAllIncomeResult.length > 0 ? previousMonthAllIncomeResult[0].total : 0;
+    // Calculate previous month's TOTAL income
+    const prevTotalIncome = previousMonthIncomeResult.length > 0 ? previousMonthIncomeResult[0].total : 0;
     
     // Calculate previous month's expenses
     const prevExpense = previousMonthExpenseResult.length > 0 ? previousMonthExpenseResult[0].total : 0;
@@ -100,6 +89,9 @@ router.get('/', async (req, res) => {
     const totalExpense = expenseResult.length > 0 ? expenseResult[0].total : 0;
     const remaining = totalIncome - totalExpense;
     
+    // Always include the date of the previous month for clarity
+    const previousMonthDate = `${previousMonth}/${previousYear}`;
+    
     res.json({
       currentMonthIncome,
       previousMonthAmount,
@@ -107,7 +99,8 @@ router.get('/', async (req, res) => {
       totalExpense,
       remaining,
       previousMonthRemaining: calculatedPreviousMonthRemaining,
-      shouldUpdatePreviousMonth
+      shouldUpdatePreviousMonth,
+      previousMonthDate
     });
   } catch (error) {
     console.error('Summary API error:', error);

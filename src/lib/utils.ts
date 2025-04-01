@@ -44,27 +44,27 @@ export function parseFormattedNumber(value: string): number {
   return isNaN(num) ? 0 : num;
 }
 
-// Danh sách các loại thu nhập
+// Danh sách các loại thu nhập - đưa previousMonth lên đầu
 export const incomeCategories = [
   { id: "previousMonth", name: "Tiền còn tháng trước" },
   { id: "salary", name: "Lương cứng" },
+  { id: "bonus", name: "Thưởng/OT" },  
   { id: "freelance", name: "Freelance" },
-  { id: "bonus", name: "Thưởng/OT" },
   { id: "debtCollection", name: "Thu nợ" },
   { id: "advance", name: "Tiền nhậu" },
   { id: "hui", name: "Hụi" },
   { id: "other", name: "Khác" }
 ];
 
-// Danh sách các loại chi tiêu
+// Danh sách các loại chi tiêu - sắp xếp theo thứ tự ưu tiên
 export const expenseCategories = [
+  { id: "rent", name: "Tiền trọ", scope: "S" },
+  { id: "sendHome", name: "Gửi về nhà", scope: "S" },
   { id: "breakfast", name: "Ăn sáng", scope: "S" },
   { id: "lunch", name: "Ăn trưa", scope: "S" },
   { id: "dinner", name: "Ăn tối", scope: "S" },
-  { id: "shopping", name: "Mua sắm", scope: "S" },
-  { id: "rent", name: "Tiền trọ", scope: "S" },
-  { id: "sendHome", name: "Gửi về nhà", scope: "S" },
   { id: "transport", name: "Đi lại/ Xăng", scope: "S" },
+  { id: "shopping", name: "Mua sắm", scope: "S" },
   { id: "fee", name: "Chi phí", scope: "S" },
   { id: "entertainment", name: "Giải trí, yêu đương", scope: "L" },
   { id: "longTermSaving", name: "Để dành (lâu dài)", scope: "C" },
@@ -103,7 +103,7 @@ export const getMonthOptions = (): { value: number; label: string }[] => {
   return options;
 };
 
-// Tạo mảng các năm cho dropdown chọn năm
+// Tạo mảng các năm cho dropdown chọn năm - chỉ giữ từ 2025-2028
 export const getYearOptions = (): { value: number; label: string }[] => {
   const options = [];
   // Chỉ hiển thị các năm từ 2025 đến 2028
