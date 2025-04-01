@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 
 // API URL - lấy từ biến môi trường
@@ -203,9 +202,15 @@ export const summaryAPI = {
     remaining: number;
     previousMonthRemaining: number;
     currentMonthIncome: number;
-    previousMonthAmount: number;
-    shouldUpdatePreviousMonth: boolean;
   }> => {
     return fetchAPI(`/summary?month=${month}&year=${year}`);
   },
+  
+  getTotalAssets: async (): Promise<{
+    totalAssets: number;
+    totalAllTimeIncome: number;
+    totalAllTimeExpense: number;
+  }> => {
+    return fetchAPI('/summary/totalAssets');
+  }
 };

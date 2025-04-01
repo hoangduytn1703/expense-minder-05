@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PiggyBank, CreditCard } from "lucide-react";
 
@@ -8,13 +8,21 @@ interface BudgetTabsProps {
     incomeTab: React.ReactNode;
     expenseTab: React.ReactNode;
   };
+  onTabChange?: (tab: string) => void;
 }
 
-export default function BudgetTabs({ children }: BudgetTabsProps) {
+export default function BudgetTabs({ children, onTabChange }: BudgetTabsProps) {
   const [activeTab, setActiveTab] = useState("income");
   
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (onTabChange) {
+      onTabChange(value);
+    }
+  };
+  
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
       <TabsList className="grid w-full grid-cols-2 p-1 rounded-xl bg-gray-100">
         <TabsTrigger 
           value="income" 

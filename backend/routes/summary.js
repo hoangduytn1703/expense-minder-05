@@ -42,7 +42,7 @@ router.get('/', async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     
-    // Calculate total income and expense from previous month
+    // Calculate previous month's income and expense
     const previousMonthIncomeResult = await Income.aggregate([
       { 
         $match: { 
@@ -84,6 +84,36 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Summary API error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// New endpoint to get total assets (accumulated balance from all months)
+router.get('/totalAssets', async (req, res) => {
+  try {
+    // Calculate all time income
+    const totalIncomeResult = await Income.aggregate([
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    
+    // Calculate all time expense
+    const totalExpenseResult = await Expense.aggregate([
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    
+    const totalIncome = totalIncomeResult.length > 0 ? totalIncomeResult[0].total : 0;
+    const totalExpense = totalExpenseResult.length > 0 ? totalExpenseResult[0].total : 0;
+    
+    // Calculate total assets as the difference between all income and all expenses
+    const totalAssets = totalIncome - totalExpense;
+    
+    res.json({
+      totalAssets,
+      totalAllTimeIncome: totalIncome,
+      totalAllTimeExpense: totalExpense
+    });
+  } catch (error) {
+    console.error('Total Assets API error:', error);
     res.status(500).json({ message: error.message });
   }
 });

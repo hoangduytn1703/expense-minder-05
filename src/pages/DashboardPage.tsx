@@ -71,6 +71,9 @@ export default function DashboardPage() {
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
       
+      // Refresh total assets after data changes
+      await summaryAPI.getTotalAssets();
+      
       prepareDisplayData(incomesData, expensesData);
       setTimeout(() => {
         setLoading(false);
@@ -211,7 +214,7 @@ export default function DashboardPage() {
                   </div>
                 )}
                 
-                <BudgetTabs>
+                <BudgetTabs onTabChange={() => {}}>
                   {{
                     incomeTab: (
                       <IncomeTable 
