@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -36,36 +37,40 @@ export default function DashboardPage() {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log("Fetching summary data for month:", month, "year:", year);
       const summary = await summaryAPI.getMonthSummary(month, year);
       console.log("Summary data:", summary);
       
+      // Always update state with the latest values from the summary
       setTotalIncome(summary.totalIncome);
       setTotalExpense(summary.totalExpense);
       setRemaining(summary.remaining);
       setPreviousMonthRemaining(summary.previousMonthRemaining);
       
       const incomesData = await incomeAPI.getByMonth(month, year);
+      console.log("Income data:", incomesData);
       setIncomes(incomesData);
       
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
       
+      // Check if we need to update the previousMonth income entry
       if (summary.shouldUpdatePreviousMonth) {
         console.log("Updating previous month remaining:", summary.previousMonthRemaining);
         await updatePreviousMonthRemaining(summary.previousMonthRemaining);
         
+        // Re-fetch the data to get the updated values
         const updatedSummary = await summaryAPI.getMonthSummary(month, year);
         setTotalIncome(updatedSummary.totalIncome);
         setRemaining(updatedSummary.remaining);
         
         const updatedIncomesData = await incomeAPI.getByMonth(month, year);
         setIncomes(updatedIncomesData);
+        
+        prepareDisplayData(updatedIncomesData, expensesData);
+      } else {
+        prepareDisplayData(incomesData, expensesData);
       }
-      
-      prepareDisplayData(
-        summary.shouldUpdatePreviousMonth ? await incomeAPI.getByMonth(month, year) : incomesData, 
-        expensesData
-      );
       
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
@@ -136,6 +141,9 @@ export default function DashboardPage() {
               note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`
             });
             console.log("Updated previous month entry:", amount);
+            
+            // Force a reload of the data to reflect the updated values
+            await loadData();
           }
         }
       } else if (amount > 0) {
@@ -147,6 +155,9 @@ export default function DashboardPage() {
           note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`,
         });
         console.log("Created new previous month entry:", amount);
+        
+        // Force a reload of the data to reflect the updated values
+        await loadData();
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật khoản còn lại tháng trước:", error);
@@ -159,6 +170,7 @@ export default function DashboardPage() {
   };
 
   const handleDataUpdate = async () => {
+    console.log("Data update triggered");
     await loadData();
   };
   

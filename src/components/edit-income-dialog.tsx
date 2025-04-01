@@ -7,7 +7,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +30,14 @@ export default function EditIncomeDialog({
   const [amount, setAmount] = useState(formatNumberInput(income.amount.toString()));
   const [note, setNote] = useState(income.note || "");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Reset form when income changes
+  React.useEffect(() => {
+    if (open) {
+      setAmount(formatNumberInput(income.amount.toString()));
+      setNote(income.note || "");
+    }
+  }, [income, open]);
 
   const handleSave = async () => {
     try {

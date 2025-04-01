@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
     // Calculate current month income (excluding the previousMonth entry)
     const currentMonthIncome = incomeResult.length > 0 ? incomeResult[0].total : 0;
     
-    // Add the previousMonth income entry amount if it exists
+    // Get the previousMonth income entry amount if it exists
     const previousMonthAmount = previousMonthIncomeEntry ? previousMonthIncomeEntry.amount : 0;
     
     // Calculate previous month remaining amount (actual calculation based on previous month's data)
