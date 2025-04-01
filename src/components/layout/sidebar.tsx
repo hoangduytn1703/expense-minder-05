@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -7,8 +6,33 @@ import {
   Settings, 
   CreditCard
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { summaryAPI } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 
 export default function Sidebar() {
+  const [totalAssets, setTotalAssets] = useState(0);
+  const [percentageSpent, setPercentageSpent] = useState(0);
+
+  useEffect(() => {
+    const fetchTotalAssets = async () => {
+      try {
+        const response = await summaryAPI.getTotalAssets();
+        setTotalAssets(response.totalAssets);
+        
+        // Calculate percentage spent
+        const percentSpent = response.totalAllTimeExpense 
+          ? Math.round((response.totalAllTimeExpense / response.totalAllTimeIncome) * 100)
+          : 0;
+        setPercentageSpent(percentSpent);
+      } catch (error) {
+        console.error("Error fetching total assets:", error);
+      }
+    };
+    
+    fetchTotalAssets();
+  }, []);
+
   const menuItems = [
     {
       title: "Tổng Quan",
@@ -70,9 +94,14 @@ export default function Sidebar() {
       <div className="px-4 py-6 mt-auto">
         <div className="bg-gray-50 p-4 rounded-lg">
           <p className="text-sm text-gray-600">Tổng tài sản</p>
-          <p className="font-bold text-lg text-gray-900">468,000,000 đ</p>
+          <p className="font-bold text-lg text-gray-900">
+            {formatCurrency(totalAssets)} đ
+          </p>
           <div className="mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-            <div className="bg-green-500 h-full" style={{ width: '70%' }}></div>
+            <div 
+              className="bg-green-500 h-full" 
+              style={{ width: `${percentageSpent}%` }}
+            ></div>
           </div>
           <div className="flex justify-between mt-1 text-xs text-gray-500">
             <span>Thu nhập</span>
