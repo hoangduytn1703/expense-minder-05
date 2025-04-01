@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 
 // API URL - lấy từ biến môi trường
@@ -32,7 +31,8 @@ export interface Debt {
   name: string;
   totalAmount: number;
   months: number;
-  deadline: Date;
+  startMonth: number;
+  startYear: number;
   note?: string;
   monthlyPayment?: number;
 }

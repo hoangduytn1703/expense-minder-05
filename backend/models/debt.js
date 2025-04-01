@@ -16,8 +16,14 @@ const DebtSchema = new mongoose.Schema({
     required: true,
     min: 1
   },
-  deadline: {
-    type: Date,
+  startMonth: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 12
+  },
+  startYear: {
+    type: Number,
     required: true
   },
   monthlyPayment: {

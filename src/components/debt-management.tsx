@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
-import { Debt, debtAPI, expenseAPI } from "@/lib/api";
-import { formatCurrency, calculateMonthlyPayment } from "@/lib/utils";
-import { format } from "date-fns";
+import { Debt, debtAPI } from "@/lib/api";
+import { formatCurrency, calculateMonthlyPayment, getMonthOptions, getYearOptions } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 interface DebtManagementProps {
@@ -27,15 +26,21 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
   const [months, setMonths] = useState(1);
-  const [deadline, setDeadline] = useState("");
+  const [startMonth, setStartMonth] = useState(new Date().getMonth() + 1);
+  const [startYear, setStartYear] = useState(new Date().getFullYear());
   const [note, setNote] = useState("");
   
   // Form fields for editing
   const [editName, setEditName] = useState("");
   const [editTotalAmount, setEditTotalAmount] = useState(0);
   const [editMonths, setEditMonths] = useState(1);
-  const [editDeadline, setEditDeadline] = useState("");
+  const [editStartMonth, setEditStartMonth] = useState(1);
+  const [editStartYear, setEditStartYear] = useState(new Date().getFullYear());
   const [editNote, setEditNote] = useState("");
+
+  // Month and year options
+  const monthOptions = getMonthOptions();
+  const yearOptions = getYearOptions();
   
   // Fetch all debts
   const fetchDebts = async () => {
@@ -70,7 +75,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   // Create a new debt
   const addDebt = async () => {
     try {
-      if (!name || totalAmount <= 0 || months <= 0 || !deadline) {
+      if (!name || totalAmount <= 0 || months <= 0) {
         toast({
           title: "Lỗi",
           description: "Vui lòng điền đầy đủ thông tin",
@@ -83,7 +88,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
         name,
         totalAmount,
         months,
-        deadline: new Date(deadline),
+        startMonth,
+        startYear,
         note,
         monthlyPayment: calculateMonthlyPayment(totalAmount, months)
       });
@@ -98,7 +104,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
       setName("");
       setTotalAmount(0);
       setMonths(1);
-      setDeadline("");
+      setStartMonth(new Date().getMonth() + 1);
+      setStartYear(new Date().getFullYear());
       setNote("");
       
       // Reload data
@@ -115,14 +122,15 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
     setEditName(debt.name);
     setEditTotalAmount(debt.totalAmount);
     setEditMonths(debt.months);
-    setEditDeadline(format(new Date(debt.deadline), "yyyy-MM-dd"));
+    setEditStartMonth(debt.startMonth);
+    setEditStartYear(debt.startYear);
     setEditNote(debt.note || "");
   };
   
   // Save debt edits
   const saveEdit = async (id: string) => {
     try {
-      if (!editName || editTotalAmount <= 0 || editMonths <= 0 || !editDeadline) {
+      if (!editName || editTotalAmount <= 0 || editMonths <= 0) {
         toast({
           title: "Lỗi",
           description: "Vui lòng điền đầy đủ thông tin",
@@ -135,7 +143,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
         name: editName,
         totalAmount: editTotalAmount,
         months: editMonths,
-        deadline: new Date(editDeadline),
+        startMonth: editStartMonth,
+        startYear: editStartYear,
         note: editNote,
         monthlyPayment: calculateMonthlyPayment(editTotalAmount, editMonths)
       });
@@ -172,9 +181,9 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
     }
   };
   
-  // Format deadline to display
-  const formatDeadline = (date: Date) => {
-    return format(new Date(date), "dd/MM/yyyy");
+  // Format month and year for display
+  const formatMonthYear = (month: number, year: number) => {
+    return `Tháng ${month}/${year}`;
   };
   
   return (
@@ -193,7 +202,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
               <TableHead>Tên</TableHead>
               <TableHead>Tổng nợ</TableHead>
               <TableHead>Số tháng</TableHead>
-              <TableHead>Hạn trả</TableHead>
+              <TableHead>Tháng bắt đầu</TableHead>
               <TableHead>Trả hàng tháng</TableHead>
               <TableHead>Ghi chú</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -252,13 +261,32 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                   </TableCell>
                   <TableCell>
                     {editingId === debt.id ? (
-                      <Input
-                        type="date"
-                        value={editDeadline}
-                        onChange={(e) => setEditDeadline(e.target.value)}
-                      />
+                      <div className="flex space-x-2">
+                        <select
+                          className="w-24 border rounded p-2"
+                          value={editStartMonth}
+                          onChange={(e) => setEditStartMonth(Number(e.target.value))}
+                        >
+                          {monthOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          className="w-20 border rounded p-2"
+                          value={editStartYear}
+                          onChange={(e) => setEditStartYear(Number(e.target.value))}
+                        >
+                          {yearOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     ) : (
-                      formatDeadline(debt.deadline)
+                      formatMonthYear(debt.startMonth, debt.startYear)
                     )}
                   </TableCell>
                   <TableCell>
@@ -332,11 +360,30 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    type="date"
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                  />
+                  <div className="flex space-x-2">
+                    <select
+                      className="w-24 border rounded p-2"
+                      value={startMonth}
+                      onChange={(e) => setStartMonth(Number(e.target.value))}
+                    >
+                      {monthOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="w-20 border rounded p-2"
+                      value={startYear}
+                      onChange={(e) => setStartYear(Number(e.target.value))}
+                    >
+                      {yearOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </TableCell>
                 <TableCell>
                   {totalAmount > 0 && months > 0
