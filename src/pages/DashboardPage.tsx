@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -10,7 +11,7 @@ import IncomeTable from "@/components/income-table";
 import ExpenseTable from "@/components/expense-table";
 import DebtManagement from "@/components/debt-management";
 import { Income, Expense, incomeAPI, expenseAPI, summaryAPI } from "@/lib/api";
-import { incomeCategories, expenseCategories } from "@/lib/utils";
+import { incomeCategories, expenseCategories, getYearOptions } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
@@ -66,8 +67,11 @@ export default function DashboardPage() {
         console.log("Updating previous month remaining:", summary.previousMonthRemaining);
         await updatePreviousMonthRemaining(summary.previousMonthRemaining);
         
+        // After updating the previous month entry, refetch all data to ensure consistency
         const updatedSummary = await summaryAPI.getMonthSummary(month, year);
+        console.log("Updated summary after previousMonth update:", updatedSummary);
         setTotalIncome(updatedSummary.totalIncome);
+        setTotalExpense(updatedSummary.totalExpense);
         setRemaining(updatedSummary.remaining);
         
         const updatedIncomesData = await incomeAPI.getByMonth(month, year);
@@ -173,6 +177,16 @@ export default function DashboardPage() {
   };
   
   const handleMonthChange = (newMonth: number, newYear: number) => {
+    // Validate year range to limit data between 2025-2028
+    if (newYear < 2025 || newYear > 2028) {
+      toast({
+        title: "Thông báo",
+        description: "Chỉ hiển thị dữ liệu từ năm 2025 đến 2028",
+        variant: "default",
+      });
+      return;
+    }
+    
     setMonth(newMonth);
     setYear(newYear);
   };

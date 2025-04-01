@@ -103,11 +103,10 @@ export const getMonthOptions = (): { value: number; label: string }[] => {
   return options;
 };
 
-// Tạo mảng các năm cho dropdown chọn năm
+// Tạo mảng các năm cho dropdown chọn năm - Giới hạn từ 2025-2028
 export const getYearOptions = (): { value: number; label: string }[] => {
-  const currentYear = new Date().getFullYear();
   const options = [];
-  for (let i = currentYear - 2; i <= currentYear + 5; i++) {
+  for (let i = 2025; i <= 2028; i++) {
     options.push({ value: i, label: `${i}` });
   }
   return options;

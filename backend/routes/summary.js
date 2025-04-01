@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     
-    // Calculate total income from previous month
+    // Get the previousMonth entry from previous month (for all months, not just the current one)
     const previousMonthIncomeResult = await Income.aggregate([
       { 
         $match: { 
@@ -61,6 +61,13 @@ router.get('/', async (req, res) => {
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
+    
+    // Get previous month previousMonth entry
+    const previousMonthPreviousEntry = await Income.findOne({
+      month: previousMonth,
+      year: previousYear,
+      category: 'previousMonth'
+    });
     
     // Calculate total expense from previous month
     const previousMonthExpenseResult = await Expense.aggregate([
@@ -74,18 +81,35 @@ router.get('/', async (req, res) => {
     // Get the previousMonth income entry amount if it exists
     const previousMonthAmount = previousMonthIncomeEntry ? previousMonthIncomeEntry.amount : 0;
     
-    // Calculate previous month remaining amount (actual calculation based on previous month's data)
+    // Calculate previous month's total income including its own previousMonth entry
     const prevIncome = previousMonthIncomeResult.length > 0 ? previousMonthIncomeResult[0].total : 0;
+    const prevPreviousMonthAmount = previousMonthPreviousEntry ? previousMonthPreviousEntry.amount : 0;
+    const prevTotalIncome = prevIncome + prevPreviousMonthAmount;
+    
+    // Previous month's expenses
     const prevExpense = previousMonthExpenseResult.length > 0 ? previousMonthExpenseResult[0].total : 0;
-    const calculatedPreviousMonthRemaining = prevIncome - prevExpense;
+    
+    // Calculate previous month's remaining amount (actual calculation based on previous month's data)
+    const calculatedPreviousMonthRemaining = prevTotalIncome - prevExpense;
     
     // Check if we need to update previousMonth entry
-    const shouldUpdatePreviousMonth = calculatedPreviousMonthRemaining !== previousMonthAmount;
+    const shouldUpdatePreviousMonth = calculatedPreviousMonthRemaining > 0 && 
+                                     calculatedPreviousMonthRemaining !== previousMonthAmount;
     
     // Total income includes both current month income and previous month's remaining
     const totalIncome = currentMonthIncome + previousMonthAmount;
     const totalExpense = expenseResult.length > 0 ? expenseResult[0].total : 0;
     const remaining = totalIncome - totalExpense;
+    
+    console.log(`Month ${currentMonth}/${currentYear} summary:`, {
+      currentMonthIncome,
+      previousMonthAmount,
+      calculatedPreviousMonthRemaining,
+      totalIncome,
+      totalExpense,
+      remaining,
+      shouldUpdatePreviousMonth
+    });
     
     res.json({
       currentMonthIncome,
