@@ -202,6 +202,9 @@ export const summaryAPI = {
     totalExpense: number;
     remaining: number;
     previousMonthRemaining: number;
+    currentMonthIncome: number;
+    previousMonthAmount: number;
+    shouldUpdatePreviousMonth: boolean;
   }> => {
     return fetchAPI(`/summary?month=${month}&year=${year}`);
   },

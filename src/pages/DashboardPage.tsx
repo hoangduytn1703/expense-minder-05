@@ -56,11 +56,25 @@ export default function DashboardPage() {
       const expensesData = await expenseAPI.getByMonth(month, year);
       setExpenses(expensesData);
       
-      // Cập nhật khoản còn lại của tháng trước (nếu cần)
-      await updatePreviousMonthRemaining(summary.previousMonthRemaining);
+      // Cập nhật khoản còn lại của tháng trước nếu cần
+      if (summary.shouldUpdatePreviousMonth) {
+        console.log("Updating previous month remaining:", summary.previousMonthRemaining);
+        await updatePreviousMonthRemaining(summary.previousMonthRemaining);
+        // Reload data after updating previous month remaining to ensure consistency
+        const updatedSummary = await summaryAPI.getMonthSummary(month, year);
+        setTotalIncome(updatedSummary.totalIncome);
+        setRemaining(updatedSummary.remaining);
+        
+        // Reload incomes to reflect updated previousMonth entry
+        const updatedIncomesData = await incomeAPI.getByMonth(month, year);
+        setIncomes(updatedIncomesData);
+      }
       
       // Chuẩn bị dữ liệu hiển thị cho tất cả các danh mục
-      prepareDisplayData(incomesData, expensesData);
+      prepareDisplayData(
+        summary.shouldUpdatePreviousMonth ? await incomeAPI.getByMonth(month, year) : incomesData, 
+        expensesData
+      );
       
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
@@ -127,29 +141,28 @@ export default function DashboardPage() {
       // Kiểm tra xem đã có mục "Tiền còn tháng trước" chưa
       const previousMonthEntry = incomes.find(income => income.category === "previousMonth");
       
-      if (amount > 0) {
-        if (previousMonthEntry) {
-          // Cập nhật nếu đã tồn tại
-          if (previousMonthEntry.amount !== amount) {
-            const id = previousMonthEntry._id || previousMonthEntry.id;
-            if (id) {
-              await incomeAPI.update(id, { amount });
-            }
+      if (previousMonthEntry) {
+        // Cập nhật nếu đã tồn tại và số tiền khác nhau
+        if (previousMonthEntry.amount !== amount) {
+          const id = previousMonthEntry._id || previousMonthEntry.id;
+          if (id) {
+            await incomeAPI.update(id, { 
+              amount, 
+              note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`
+            });
+            console.log("Updated previous month entry:", amount);
           }
-        } else {
-          // Thêm mới nếu chưa tồn tại
-          await incomeAPI.create({
-            month,
-            year,
-            category: "previousMonth",
-            amount,
-            note: "Tự động cập nhật từ tháng trước",
-          });
-          
-          // Tải lại thu nhập sau khi thêm mới
-          const incomesData = await incomeAPI.getByMonth(month, year);
-          setIncomes(incomesData);
         }
+      } else if (amount > 0) {
+        // Thêm mới nếu chưa tồn tại và số tiền > 0
+        await incomeAPI.create({
+          month,
+          year,
+          category: "previousMonth",
+          amount,
+          note: `Tự động cập nhật từ tháng trước: ${new Date().toLocaleDateString()}`,
+        });
+        console.log("Created new previous month entry:", amount);
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật khoản còn lại tháng trước:", error);
@@ -160,6 +173,11 @@ export default function DashboardPage() {
   const handleMonthChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
+  };
+
+  // Handle updates to income or expenses
+  const handleDataUpdate = async () => {
+    await loadData();
   };
   
   return (
@@ -208,7 +226,7 @@ export default function DashboardPage() {
                       month={month} 
                       year={year}
                       categories={incomeCategories}
-                      onUpdate={loadData} 
+                      onUpdate={handleDataUpdate} 
                     />
                   ),
                   expenseTab: (
@@ -217,13 +235,13 @@ export default function DashboardPage() {
                       month={month} 
                       year={year}
                       categories={expenseCategories}
-                      onUpdate={loadData} 
+                      onUpdate={handleDataUpdate} 
                     />
                   ),
                 }}
               </BudgetTabs>
               
-              <DebtManagement onUpdate={loadData} />
+              <DebtManagement onUpdate={handleDataUpdate} />
             </>
           )}
         </main>

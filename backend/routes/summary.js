@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
         $match: { 
           month: currentMonth, 
           year: currentYear,
-          category: { $ne: 'previousMonth' } // Exclude previousMonth category to avoid double counting
+          category: { $ne: 'previousMonth' } 
         } 
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
         $match: { 
           month: previousMonth, 
           year: previousYear,
-          category: { $ne: 'previousMonth' } // Exclude previousMonth from previous month too
+          category: { $ne: 'previousMonth' } 
         } 
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -74,22 +74,23 @@ router.get('/', async (req, res) => {
     // Add the previousMonth income entry amount if it exists
     const previousMonthAmount = previousMonthIncomeEntry ? previousMonthIncomeEntry.amount : 0;
     
+    // Calculate previous month remaining amount (actual calculation based on previous month's data)
+    const prevIncome = previousMonthIncomeResult.length > 0 ? previousMonthIncomeResult[0].total : 0;
+    const prevExpense = previousMonthExpenseResult.length > 0 ? previousMonthExpenseResult[0].total : 0;
+    const calculatedPreviousMonthRemaining = prevIncome - prevExpense;
+    
     // Total income includes both current month income and previous month's remaining
     const totalIncome = currentMonthIncome + previousMonthAmount;
     const totalExpense = expenseResult.length > 0 ? expenseResult[0].total : 0;
     
-    // Calculate previous month remaining
-    const prevIncome = previousMonthIncomeResult.length > 0 ? previousMonthIncomeResult[0].total : 0;
-    const prevExpense = previousMonthExpenseResult.length > 0 ? previousMonthExpenseResult[0].total : 0;
-    const previousMonthRemaining = prevIncome - prevExpense;
-    
     res.json({
-      currentMonthIncome, // Add this to fix the calculation issue
-      previousMonthAmount, // Add this to see the amount being carried over
+      currentMonthIncome,
+      previousMonthAmount,
       totalIncome,
       totalExpense,
       remaining: totalIncome - totalExpense,
-      previousMonthRemaining
+      previousMonthRemaining: calculatedPreviousMonthRemaining,
+      shouldUpdatePreviousMonth: calculatedPreviousMonthRemaining !== previousMonthAmount
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
