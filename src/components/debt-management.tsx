@@ -85,7 +85,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   
   // Start editing a debt
   const startEditing = (debt: Debt) => {
-    setEditingId(debt._id || debt.id || null);
+    const debtId = debt.id || debt._id || null;
+    setEditingId(debtId);
     setEditName(debt.name);
     setEditTotalAmount(debt.totalAmount);
     setEditFormattedTotalAmount(formatNumberInput(debt.totalAmount.toString()));
@@ -114,7 +115,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
         startMonth: editStartMonth,
         startYear: editStartYear,
         note: editNote,
-        monthlyPayment: calculateMonthlyPayment(editTotalAmount, editMonths)
+        monthlyPayment: calculateMonthlyPayment(editTotalAmount, editMonths),
+        isPaid: false
       });
       
       toast({
@@ -127,6 +129,11 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
       onUpdate();
     } catch (error) {
       console.error("Error updating debt:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật khoản nợ",
+        variant: "destructive",
+      });
     }
   };
   
@@ -140,7 +147,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   const deleteDebt = async () => {
     if (!debtToDelete) return;
     
-    const id = debtToDelete._id || debtToDelete.id;
+    const id = debtToDelete.id || debtToDelete._id;
     if (!id) {
       toast({
         title: "Lỗi",
@@ -213,10 +220,12 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              debts.map((debt) => (
-                <TableRow key={debt._id || debt.id}>
+              debts.map((debt) => {
+                const debtId = debt.id || debt._id;
+                return (
+                <TableRow key={debtId}>
                   <TableCell>
-                    {editingId === (debt._id || debt.id) ? (
+                    {editingId === debtId ? (
                       <Input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
@@ -226,7 +235,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === (debt._id || debt.id) ? (
+                    {editingId === debtId ? (
                       <Input
                         type="text"
                         value={editFormattedTotalAmount}
@@ -238,7 +247,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === (debt._id || debt.id) ? (
+                    {editingId === debtId ? (
                       <Input
                         type="number"
                         value={editMonths}
@@ -251,7 +260,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === (debt._id || debt.id) ? (
+                    {editingId === debtId ? (
                       <div className="flex space-x-2">
                         <select
                           className="w-24 border rounded p-2"
@@ -284,7 +293,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     {formatCurrency(debt.monthlyPayment || 0)} đ
                   </TableCell>
                   <TableCell>
-                    {editingId === (debt._id || debt.id) ? (
+                    {editingId === debtId ? (
                       <Input
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
@@ -294,8 +303,8 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {editingId === (debt._id || debt.id) ? (
-                      <Button size="sm" onClick={() => saveEdit(editingId)}>
+                    {editingId === debtId ? (
+                      <Button size="sm" onClick={() => saveEdit(debtId || "")}>
                         Lưu
                       </Button>
                     ) : (
@@ -319,7 +328,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>

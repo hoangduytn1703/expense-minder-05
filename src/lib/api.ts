@@ -19,15 +19,18 @@ export interface Expense {
   year: number;
   note: string;
   scope: string;
+  actualAmount?: number;
 }
 
 export interface Debt {
-  id: string;
+  id?: string;
+  _id?: string;
   name: string;
-  amount: number;
-  interestRate?: number;
-  startDate: string;
-  endDate?: string;
+  totalAmount: number;
+  months: number;
+  startMonth: number;
+  startYear: number;
+  monthlyPayment?: number;
   note?: string;
   isPaid: boolean;
 }
@@ -249,7 +252,9 @@ export const incomeAPI = {
     fetchAPI(`/api/incomes?month=${month}&year=${year}`),
   add: async (data: Income) => fetchAPI('/api/incomes', 'POST', data),
   update: async (data: Income) => fetchAPI('/api/incomes', 'PUT', data),
-  delete: async (id: string) => fetchAPI('/api/incomes', 'DELETE', { id })
+  delete: async (id: string) => fetchAPI('/api/incomes', 'DELETE', { id }),
+  // Alias for consistency with component calls
+  create: async (data: Income) => fetchAPI('/api/incomes', 'POST', data)
 };
 
 // Expense API
@@ -259,19 +264,23 @@ export const expenseAPI = {
     fetchAPI(`/api/expenses?month=${month}&year=${year}`),
   add: async (data: Expense) => fetchAPI('/api/expenses', 'POST', data),
   update: async (data: Expense) => fetchAPI('/api/expenses', 'PUT', data),
-  delete: async (id: string) => fetchAPI('/api/expenses', 'DELETE', { id })
+  delete: async (id: string) => fetchAPI('/api/expenses', 'DELETE', { id }),
+  // Alias for consistency with component calls
+  create: async (data: Expense) => fetchAPI('/api/expenses', 'POST', data)
 };
 
 // Debt API
 export const debtAPI = {
   getAll: async () => fetchAPI('/api/debts'),
   add: async (data: Debt) => fetchAPI('/api/debts', 'POST', data),
-  update: async (data: Debt) => fetchAPI('/api/debts', 'PUT', data),
+  update: async (id: string, data: Debt) => fetchAPI('/api/debts', 'PUT', { ...data, id }),
   delete: async (id: string) => fetchAPI('/api/debts', 'DELETE', id),
   togglePaid: async (debt: Debt) => {
     const updatedDebt = { ...debt, isPaid: !debt.isPaid };
     return fetchAPI('/api/debts', 'PUT', updatedDebt);
-  }
+  },
+  // Alias for consistency with component calls
+  create: async (data: Debt) => fetchAPI('/api/debts', 'POST', data)
 };
 
 // Summary API

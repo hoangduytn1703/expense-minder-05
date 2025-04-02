@@ -53,7 +53,7 @@ export default function AddExpenseDialog({
       const parsedAmount = parseFormattedNumber(amount);
       const parsedActualAmount = actualAmount ? parseFormattedNumber(actualAmount) : undefined;
 
-      await expenseAPI.create({
+      await expenseAPI.add({
         month,
         year,
         category,

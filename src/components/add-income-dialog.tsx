@@ -45,7 +45,7 @@ export default function AddIncomeDialog({
       setIsSaving(true);
       const parsedAmount = parseFormattedNumber(amount);
 
-      await incomeAPI.create({
+      await incomeAPI.add({
         month,
         year,
         category,

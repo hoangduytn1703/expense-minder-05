@@ -46,14 +46,15 @@ export default function AddDebtDialog({ onUpdate }: AddDebtDialogProps) {
     }
 
     try {
-      await debtAPI.create({
+      await debtAPI.add({
         name,
         totalAmount,
         months,
         startMonth,
         startYear,
         note,
-        monthlyPayment: calculateMonthlyPayment(totalAmount, months)
+        monthlyPayment: calculateMonthlyPayment(totalAmount, months),
+        isPaid: false
       });
 
       toast({
