@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
@@ -42,21 +41,20 @@ export default function LoginForm() {
     setIsSubmitting(true);
     
     try {
-      const success = login(values.email, values.password);
+      await login(values.email, values.password);
       
-      if (success) {
-        toast({
-          title: "Đăng nhập thành công",
-          description: "Chào mừng bạn quay trở lại!",
-        });
-        navigate("/dashboard");
-      } else {
-        // Error toast is handled within the login function
-      }
-    } catch (error) {
       toast({
-        title: "Đã xảy ra lỗi",
-        description: "Không thể đăng nhập. Vui lòng thử lại sau.",
+        title: "Đăng nhập thành công",
+        description: "Chào mừng bạn quay trở lại!",
+      });
+      
+      // Chuyển hướng đến trang dashboard
+      navigate("/dashboard");
+      
+    } catch (error: any) {
+      toast({
+        title: "Đăng nhập thất bại",
+        description: error.message || "Không thể đăng nhập. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
