@@ -21,7 +21,7 @@ import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isAuthenticated } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { summaryAPI, incomeAPI, expenseAPI } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
 interface Category {
@@ -77,50 +77,77 @@ export default function ReportsPage() {
   // Fetch report data
   const fetchReportData = async () => {
     try {
-      // Fetch income category totals
-      const incomeResponse = await api.get(`/income/categories?year=${currentYear}&month=${currentMonth}`);
-      if (incomeResponse.data) {
-        const total = incomeResponse.data.reduce((sum: number, item: any) => sum + item.total, 0);
-        const incomesWithPercentage = incomeResponse.data.map((item: any, index: number) => ({
-          ...item,
-          color: COLORS[index % COLORS.length],
-          percentage: total > 0 ? Math.round((item.total / total) * 100) : 0
-        }));
-        setIncomeData(incomesWithPercentage);
-      }
+      // Fetch income by categories and calculate percentages
+      const incomes = await incomeAPI.getByMonth(currentMonth, currentYear);
+      const incomesByCategory: Record<string, number> = {};
       
-      // Fetch expense category totals
-      const expenseResponse = await api.get(`/expense/categories?year=${currentYear}&month=${currentMonth}`);
-      if (expenseResponse.data) {
-        const total = expenseResponse.data.reduce((sum: number, item: any) => sum + item.total, 0);
-        const expensesWithPercentage = expenseResponse.data.map((item: any, index: number) => ({
-          ...item,
-          color: COLORS[index % COLORS.length],
-          percentage: total > 0 ? Math.round((item.total / total) * 100) : 0
-        }));
-        setExpenseData(expensesWithPercentage);
-      }
+      incomes.forEach(income => {
+        if (incomesByCategory[income.category]) {
+          incomesByCategory[income.category] += income.amount;
+        } else {
+          incomesByCategory[income.category] = income.amount;
+        }
+      });
       
-      // Fetch summary data
-      const summaryResponse = await api.get(`/summary?year=${currentYear}&month=${currentMonth}`);
-      if (summaryResponse.data) {
-        setSummary({
-          totalIncome: summaryResponse.data.totalIncome || 0,
-          totalExpense: summaryResponse.data.totalExpense || 0,
-          startBalance: summaryResponse.data.startBalance || 0,
-          endBalance: summaryResponse.data.endBalance || 0
+      const incomeTotal = Object.values(incomesByCategory).reduce((sum, val) => sum + val, 0);
+      
+      const incomeCategories = Object.entries(incomesByCategory).map(([id, total], index) => ({
+        id,
+        name: id,
+        total,
+        color: COLORS[index % COLORS.length],
+        percentage: incomeTotal > 0 ? Math.round((total / incomeTotal) * 100) : 0
+      }));
+      
+      setIncomeData(incomeCategories);
+      
+      // Fetch expenses by categories and calculate percentages
+      const expenses = await expenseAPI.getByMonth(currentMonth, currentYear);
+      const expensesByCategory: Record<string, number> = {};
+      
+      expenses.forEach(expense => {
+        if (expensesByCategory[expense.category]) {
+          expensesByCategory[expense.category] += expense.amount;
+        } else {
+          expensesByCategory[expense.category] = expense.amount;
+        }
+      });
+      
+      const expenseTotal = Object.values(expensesByCategory).reduce((sum, val) => sum + val, 0);
+      
+      const expenseCategories = Object.entries(expensesByCategory).map(([id, total], index) => ({
+        id,
+        name: id,
+        total,
+        color: COLORS[index % COLORS.length],
+        percentage: expenseTotal > 0 ? Math.round((total / expenseTotal) * 100) : 0
+      }));
+      
+      setExpenseData(expenseCategories);
+      
+      // Fetch monthly summary
+      const summaryData = await summaryAPI.getMonthSummary(currentMonth, currentYear);
+      setSummary({
+        totalIncome: summaryData.totalIncome || 0,
+        totalExpense: summaryData.totalExpense || 0,
+        startBalance: summaryData.previousMonthRemaining || 0,
+        endBalance: summaryData.remaining || 0
+      });
+      
+      // Generate weekly data for the chart
+      // Since we don't have actual weekly data yet, we'll create mock data based on month divisions
+      const weeks = Math.ceil(new Date(currentYear, currentMonth, 0).getDate() / 7);
+      const weeklyData = [];
+      
+      for (let i = 1; i <= weeks; i++) {
+        weeklyData.push({
+          name: `Tuần ${i}`,
+          income: Math.round(summaryData.totalIncome / weeks),
+          expense: Math.round(summaryData.totalExpense / weeks)
         });
       }
       
-      // Fetch balance data for the chart
-      const balanceResponse = await api.get(`/summary/weekly?year=${currentYear}&month=${currentMonth}`);
-      if (balanceResponse.data) {
-        setBalanceData(balanceResponse.data.map((item: any) => ({
-          name: `${item.week}`,
-          income: item.income,
-          expense: item.expense
-        })));
-      }
+      setBalanceData(weeklyData);
     } catch (error) {
       console.error("Error fetching report data:", error);
     }
@@ -155,8 +182,8 @@ export default function ReportsPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
             <h1 className="text-2xl font-bold dark:text-white">Báo cáo tài chính</h1>
             <MonthSelector
-              currentMonth={currentMonth}
-              currentYear={currentYear}
+              month={currentMonth}
+              year={currentYear}
               onChange={handleMonthChange}
             />
           </div>

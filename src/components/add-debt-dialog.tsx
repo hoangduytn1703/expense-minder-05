@@ -1,22 +1,13 @@
-
-import React, { useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { useState, useContext } from "react";
+import { PlusIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { debtAPI } from "@/lib/api";
-import { calculateMonthlyPayment, getMonthOptions, getYearOptions, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
+import { debtAPI, Debt } from "@/lib/api";
+import { AssetsContext } from "@/contexts/AssetsContext";
+import { formatNumberInput, parseFormattedNumber, formatCurrency } from "@/lib/utils";
 
 interface AddDebtDialogProps {
   onUpdate: () => void;
@@ -32,11 +23,9 @@ export default function AddDebtDialog({ onUpdate }: AddDebtDialogProps) {
   const [note, setNote] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  // Month and year options
   const monthOptions = getMonthOptions();
   const yearOptions = getYearOptions();
 
-  // Handle amount input change with formatting
   const handleAmountChange = (value: string) => {
     const formatted = formatNumberInput(value);
     setFormattedTotalAmount(formatted);
@@ -71,7 +60,6 @@ export default function AddDebtDialog({ onUpdate }: AddDebtDialogProps) {
         description: "Đã thêm khoản nợ mới",
       });
 
-      // Reset form
       setName("");
       setTotalAmount(0);
       setFormattedTotalAmount("");
@@ -81,7 +69,6 @@ export default function AddDebtDialog({ onUpdate }: AddDebtDialogProps) {
       setNote("");
       setIsOpen(false);
 
-      // Call onUpdate to refresh list
       onUpdate();
     } catch (error) {
       console.error("Error adding debt:", error);
@@ -97,7 +84,7 @@ export default function AddDebtDialog({ onUpdate }: AddDebtDialogProps) {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button className="flex items-center gap-2">
-          <PlusCircle className="h-4 w-4" /> Thêm khoản nợ
+          <PlusIcon className="h-4 w-4" /> Thêm khoản nợ
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

@@ -1,3 +1,4 @@
+
 import { toast } from "@/hooks/use-toast";
 
 // API URL - lấy từ biến môi trường
@@ -212,5 +213,37 @@ export const summaryAPI = {
     totalAllTimeExpense: number;
   }> => {
     return fetchAPI('/summary/totalAssets');
+  }
+};
+
+// Export the API for compatibility with existing code
+export const api = {
+  get: async (endpoint: string) => {
+    return {
+      data: await fetchAPI(endpoint)
+    };
+  },
+  post: async (endpoint: string, data: any) => {
+    return {
+      data: await fetchAPI(endpoint, {
+        method: "POST",
+        body: JSON.stringify(data),
+      })
+    };
+  },
+  put: async (endpoint: string, data: any) => {
+    return {
+      data: await fetchAPI(endpoint, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      })
+    };
+  },
+  delete: async (endpoint: string) => {
+    return {
+      data: await fetchAPI(endpoint, {
+        method: "DELETE",
+      })
+    };
   }
 };
