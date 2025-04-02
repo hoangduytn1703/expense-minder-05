@@ -1,338 +1,450 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated, isAdmin, User, getAllUsers, banUser, addUser } from "@/lib/auth";
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import { toast } from "@/hooks/use-toast";
+import { getAllUsers, isAdmin, createUser, banUser, unbanUser, deleteUser, User } from "@/lib/auth";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, UserPlus, Trash, Search, Ban, RefreshCw } from "lucide-react";
-
-const addUserFormSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
-  name: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự"),
-  isAdmin: z.boolean().default(false)
-});
-
-type AddUserFormValues = z.infer<typeof addUserFormSchema>;
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { format } from "date-fns";
+import { UserPlus, MoreHorizontal, Loader2, Check, Ban, Trash, Edit } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function AdminPage() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<AddUserFormValues>({
-    resolver: zodResolver(addUserFormSchema),
-    defaultValues: {
-      email: "",
-      name: "",
-      isAdmin: false
-    }
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "user",
+    verified: true
   });
 
+  // Check if user is admin
   useEffect(() => {
-    // Redirect if not authenticated or not admin
-    if (!isAuthenticated()) {
-      navigate("/login");
-      return;
-    }
-    
     if (!isAdmin()) {
+      toast({
+        title: "Access denied",
+        description: "You don't have permission to access this page",
+        variant: "destructive",
+      });
       navigate("/dashboard");
-      return;
     }
-    
-    loadUsers();
   }, [navigate]);
 
-  const loadUsers = () => {
-    setIsLoading(true);
-    try {
-      const allUsers = getAllUsers();
-      setUsers(allUsers);
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải danh sách người dùng",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Fetch users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersData = await getAllUsers();
+        setUsers(usersData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch users",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleBanUser = (email: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa người dùng ${email}?`)) {
-      const result = banUser(email);
+    fetchUsers();
+  }, []);
+
+  const handleAddUser = async () => {
+    setIsActionLoading(true);
+    try {
+      const result = await createUser({
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role as "admin" | "user" | "banned",
+        verified: newUser.verified
+      });
+
       if (result.success) {
         toast({
-          title: "Thành công",
+          title: "Success",
           description: result.message,
         });
-        loadUsers();
+        // Update users list
+        if (result.user) {
+          setUsers([...users, result.user]);
+        }
+        // Reset form
+        setNewUser({
+          name: "",
+          email: "",
+          password: "",
+          role: "user",
+          verified: true
+        });
+        setAddDialogOpen(false);
       } else {
         toast({
-          title: "Lỗi",
+          title: "Error",
           description: result.message,
           variant: "destructive",
         });
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
-  const onSubmitAddUser = async (values: AddUserFormValues) => {
-    setIsSubmitting(true);
-    
+  const handleBanUser = async (userId: string) => {
+    setIsActionLoading(true);
     try {
-      const result = addUser(values.email, values.name, values.isAdmin);
-      
-      if (result.success) {
+      const result = await banUser(userId);
+      if (result.success && result.user) {
         toast({
-          title: "Thành công",
-          description: result.message,
+          title: "Success",
+          description: "User banned successfully",
         });
-        form.reset();
-        setIsAddDialogOpen(false);
-        loadUsers();
+        setUsers(users.map(user => user.id === userId ? result.user! : user));
       } else {
         toast({
-          title: "Lỗi",
-          description: result.message,
+          title: "Error",
+          description: "Failed to ban user",
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Lỗi",
-        description: "Không thể thêm người dùng",
+        title: "Error",
+        description: "Failed to ban user",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsActionLoading(false);
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const formatDate = (date: Date) => {
-    if (!(date instanceof Date)) {
-      date = new Date(date);
+  const handleUnbanUser = async (userId: string) => {
+    setIsActionLoading(true);
+    try {
+      const result = await unbanUser(userId);
+      if (result.success && result.user) {
+        toast({
+          title: "Success",
+          description: "User unbanned successfully",
+        });
+        setUsers(users.map(user => user.id === userId ? result.user! : user));
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to unban user",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to unban user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsActionLoading(false);
     }
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setIsActionLoading(true);
+    try {
+      const result = await deleteUser(userId);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "User deleted successfully",
+        });
+        setUsers(users.filter(user => user.id !== userId));
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete user",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Helper function for user role badge
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Badge className="bg-purple-500">Admin</Badge>;
+      case 'user':
+        return <Badge className="bg-blue-500">User</Badge>;
+      case 'banned':
+        return <Badge className="bg-red-500">Banned</Badge>;
+      default:
+        return <Badge className="bg-gray-500">{role}</Badge>;
+    }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản Lý Người Dùng</h1>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">User Management</h1>
+        
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add User
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New User</DialogTitle>
+              <DialogDescription>
+                Create a new user account. Password will be temporary.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="name" className="text-right">
+                  Name
+                </label>
+                <Input
+                  id="name"
+                  className="col-span-3"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                />
+              </div>
               
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={loadUsers}
-                  disabled={isLoading}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="email" className="text-right">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email" 
+                  className="col-span-3"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="password" className="text-right">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  className="col-span-3"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="role" className="text-right">
+                  Role
+                </label>
+                <Select 
+                  value={newUser.role} 
+                  onValueChange={(value) => setNewUser({ ...newUser, role: value })}
                 >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
               
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="flex items-center gap-2">
-                      <UserPlus className="h-4 w-4" />
-                      <span>Thêm Người Dùng</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Thêm người dùng mới</DialogTitle>
-                    </DialogHeader>
-                    
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmitAddUser)} className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Email người dùng" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Họ tên</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Họ tên người dùng" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="isAdmin"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center gap-2 space-y-0">
-                              <FormControl>
-                                <Checkbox 
-                                  checked={field.value} 
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal">
-                                Cấp quyền quản trị viên
-                              </FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <DialogFooter>
-                          <Button 
-                            type="submit" 
-                            disabled={isSubmitting}
-                          >
-                            {isSubmitting ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Đang xử lý
-                              </>
-                            ) : "Thêm người dùng"}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label className="text-right">
+                  Verified
+                </label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="verified" 
+                    checked={newUser.verified}
+                    onCheckedChange={(checked) => setNewUser({ ...newUser, verified: checked as boolean })}
+                  />
+                  <label htmlFor="verified">
+                    Mark as verified
+                  </label>
+                </div>
               </div>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-              <div className="p-4 border-b dark:border-gray-700">
-                <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                  <Input
-                    placeholder="Tìm kiếm theo email, tên..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              {isLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div role="status" className="flex justify-center items-center flex-col">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                    <p className="mt-4 text-gray-500 dark:text-gray-400">Đang tải danh sách người dùng...</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Họ tên</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead>Vai trò</TableHead>
-                        <TableHead>Ngày tạo</TableHead>
-                        <TableHead>Đăng nhập gần nhất</TableHead>
-                        <TableHead className="text-right">Thao tác</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                            {searchQuery ? "Không tìm thấy người dùng phù hợp" : "Chưa có người dùng nào"}
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredUsers.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.email}</TableCell>
-                            <TableCell>{user.name}</TableCell>
-                            <TableCell>
-                              {user.isVerified ? (
-                                <span className="bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">
-                                  Đã xác minh
-                                </span>
-                              ) : (
-                                <span className="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">
-                                  Chưa xác minh
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {user.isAdmin ? (
-                                <span className="bg-blue-100 text-blue-800 text-xs px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                                  Quản trị viên
-                                </span>
-                              ) : (
-                                <span className="bg-gray-100 text-gray-800 text-xs px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">
-                                  Người dùng
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>{formatDate(user.createdAt)}</TableCell>
-                            <TableCell>{formatDate(user.lastLogin)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleBanUser(user.email)}
-                                disabled={user.isAdmin} // Prevent removing admins
-                                className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddUser} 
+                disabled={isActionLoading || !newUser.name || !newUser.email || !newUser.password}
+              >
+                {isActionLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Add User
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Last Login</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-mono text-sm">{user.id.substring(0, 8)}...</TableCell>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    {user.verified ? 
+                      <Badge className="bg-green-500">Verified</Badge> : 
+                      <Badge variant="outline">Unverified</Badge>
+                    }
+                  </TableCell>
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  <TableCell>{format(new Date(user.createdAt), 'dd MMM yyyy')}</TableCell>
+                  <TableCell>
+                    {user.lastLogin ? 
+                      format(new Date(user.lastLogin), 'dd MMM yyyy') : 
+                      'Never'
+                    }
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {user.role === "banned" ? (
+                          <DropdownMenuItem
+                            onClick={() => handleUnbanUser(user.id)}
+                            disabled={isActionLoading}
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Unban User
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => handleBanUser(user.id)}
+                            disabled={isActionLoading || user.role === "admin"}
+                          >
+                            <Ban className="mr-2 h-4 w-4" />
+                            Ban User
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteUser(user.id)}
+                          disabled={isActionLoading || user.role === "admin"}
+                          className="text-red-600"
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

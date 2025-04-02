@@ -1,69 +1,67 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { register as registerUser } from "@/lib/auth";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
+
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, User, Key, Loader2 } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { register as registerUser } from "@/lib/auth";
 
-// Define form schema
-const registerFormSchema = z.object({
-  name: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự"),
-  email: z.string().email("Email không hợp lệ"),
-  password: z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
-  confirmPassword: z.string()
-}).refine(data => data.password === data.confirmPassword, {
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Họ tên phải có ít nhất 2 ký tự" }),
+  email: z.string().email({ message: "Email không hợp lệ" }),
+  password: z.string().min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu không khớp",
-  path: ["confirmPassword"]
+  path: ["confirmPassword"],
 });
-
-type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
 export default function RegisterForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const navigate = useNavigate();
-
-  // Initialize form
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerFormSchema),
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       email: "",
       password: "",
-      confirmPassword: ""
-    }
+      confirmPassword: "",
+    },
   });
 
-  // Handle form submission
-  const onSubmit = async (values: RegisterFormValues) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    
     try {
-      const result = registerUser(values.email, values.password, values.name);
+      const result = await registerUser(values.name, values.email, values.password);
       
-      if (result.success) {
-        toast({
-          title: "Đăng ký thành công",
-          description: "Vui lòng kiểm tra email để xác minh tài khoản",
-        });
-        navigate("/login", { state: { registeredEmail: values.email } });
-      } else {
-        toast({
-          title: "Đăng ký thất bại",
-          description: result.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+      setRegistrationSuccess(true);
       toast({
-        title: "Đã xảy ra lỗi",
-        description: "Không thể đăng ký tài khoản. Vui lòng thử lại sau.",
+        title: "Đăng ký thành công",
+        description: "Vui lòng kiểm tra email để xác thực tài khoản",
+      });
+      
+      // Redirect to verification page with email for resend functionality
+      navigate(`/verify?email=${encodeURIComponent(values.email)}`);
+    } catch (error: any) {
+      toast({
+        title: "Đăng ký thất bại",
+        description: error.message || "Đã xảy ra lỗi khi đăng ký tài khoản",
         variant: "destructive",
       });
     } finally {
@@ -72,14 +70,8 @@ export default function RegisterForm() {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">Đăng ký tài khoản</CardTitle>
-        <CardDescription>
-          Nhập thông tin của bạn để tạo tài khoản mới
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+      <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -88,114 +80,81 @@ export default function RegisterForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Họ tên</FormLabel>
-                  <div className="relative">
-                    <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <FormControl>
-                      <Input 
-                        placeholder="Nhập họ tên của bạn" 
-                        className="pl-10" 
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </div>
+                  <FormControl>
+                    <Input placeholder="Nguyễn Văn A" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Email</FormLabel>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="email@example.com" 
-                        className="pl-10" 
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </div>
+                  <FormControl>
+                    <Input type="email" placeholder="example@gmail.com" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="password"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mật khẩu</FormLabel>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="Tối thiểu 8 ký tự" 
-                        className="pl-10" 
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </div>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Xác nhận mật khẩu</FormLabel>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="Nhập lại mật khẩu" 
-                        className="pl-10" 
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </div>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isSubmitting}
-            >
+            
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang xử lý
+                  Đang đăng ký...
                 </>
-              ) : "Đăng ký"}
+              ) : (
+                <>
+                  Đăng ký
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
             </Button>
           </form>
         </Form>
+        
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-600 dark:text-gray-400">
+            Đã có tài khoản?{" "}
+            <Link to="/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+              Đăng nhập
+            </Link>
+          </p>
+        </div>
       </CardContent>
-      <CardFooter className="flex justify-center border-t p-4">
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-          Đã có tài khoản?{" "}
-          <Link to="/login" className="font-medium text-primary hover:underline">
-            Đăng nhập ngay
-          </Link>
-        </p>
-      </CardFooter>
     </Card>
   );
 }

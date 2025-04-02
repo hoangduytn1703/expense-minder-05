@@ -36,9 +36,22 @@ export default function VerifyEmailPage() {
       setEmail(urlEmail);
     }
 
-    const result = verifyEmail(token);
-    setVerificationResult(result);
-    setIsVerifying(false);
+    const verifyToken = async () => {
+      try {
+        setIsVerifying(true);
+        const result = await verifyEmail(token);
+        setVerificationResult(result);
+      } catch (error) {
+        setVerificationResult({
+          success: false,
+          message: "Đã xảy ra lỗi khi xác minh email."
+        });
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    verifyToken();
   }, [token, location.search]);
 
   // Handle resend verification email
@@ -54,7 +67,7 @@ export default function VerifyEmailPage() {
 
     setIsResending(true);
     try {
-      const result = resendVerification(email);
+      const result = await resendVerification(email);
       if (result.success) {
         toast({
           title: "Thành công",
