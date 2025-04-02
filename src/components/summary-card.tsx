@@ -19,26 +19,26 @@ export default function SummaryCard({
     switch (variant) {
       case "income":
         return {
-          bgColor: "bg-gradient-to-r from-yellow-400 to-yellow-300",
-          textColor: "text-yellow-900",
-          icon: <ArrowUpCircle className="h-8 w-8 text-yellow-600" />
+          bgColor: "bg-gradient-to-r from-yellow-400 to-yellow-300 dark:from-yellow-800 dark:to-yellow-700",
+          textColor: "text-yellow-900 dark:text-yellow-100",
+          icon: <ArrowUpCircle className="h-8 w-8 text-yellow-600 dark:text-yellow-300" />
         };
       case "expense":
         return {
-          bgColor: "bg-gradient-to-r from-rose-400 to-red-300",
-          textColor: "text-red-900",
-          icon: <ArrowDownCircle className="h-8 w-8 text-red-600" />
+          bgColor: "bg-gradient-to-r from-rose-400 to-red-300 dark:from-rose-800 dark:to-red-700",
+          textColor: "text-red-900 dark:text-red-100",
+          icon: <ArrowDownCircle className="h-8 w-8 text-red-600 dark:text-red-300" />
         };
       case "remaining":
         return {
-          bgColor: "bg-gradient-to-r from-green-400 to-emerald-300",
-          textColor: "text-emerald-900",
-          icon: <Wallet className="h-8 w-8 text-emerald-600" />
+          bgColor: "bg-gradient-to-r from-green-400 to-emerald-300 dark:from-green-800 dark:to-emerald-700",
+          textColor: "text-emerald-900 dark:text-emerald-100",
+          icon: <Wallet className="h-8 w-8 text-emerald-600 dark:text-emerald-300" />
         };
       default:
         return {
-          bgColor: "bg-gray-100",
-          textColor: "text-gray-900",
+          bgColor: "bg-gray-100 dark:bg-gray-800",
+          textColor: "text-gray-900 dark:text-gray-100",
           icon: null
         };
     }

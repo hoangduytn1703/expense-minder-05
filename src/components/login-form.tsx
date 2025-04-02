@@ -45,7 +45,7 @@ export default function LoginForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="hoangduytn1703@gmail.com"
+              placeholder="example@mail.com"
               required
             />
           </div>
@@ -67,10 +67,15 @@ export default function LoginForm() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <p className="text-sm text-muted-foreground text-center">
-          * Sử dụng tài khoản: hoangduytn1703@gmail.com / AkiraGosho9517
-        </p>
+      <CardFooter className="flex flex-col gap-2">
+        <div className="text-sm text-muted-foreground text-center">
+          * Tài khoản mặc định: hoangduytn1703@gmail.com / AkiraGosho9517
+        </div>
+        <div className="text-sm text-center">
+          <Button variant="link" onClick={() => navigate("/register")}>
+            Chưa có tài khoản? Đăng ký
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );
