@@ -11,7 +11,7 @@ import { Toggle } from "@/components/ui/toggle";
 export default function Header() {
   const navigate = useNavigate();
   const { totalAssets } = useAssets();
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   
   const handleLogout = () => {
     logout();
@@ -35,12 +35,12 @@ export default function Header() {
               <Bell className="h-5 w-5" />
             </Button>
             <Toggle 
-              pressed={theme === "dark"}
+              pressed={resolvedTheme === "dark"}
               onPressedChange={toggleTheme} 
               aria-label="Toggle theme"
               className="text-gray-500 dark:text-gray-300"
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Toggle>
             <Button 
               variant="outline" 

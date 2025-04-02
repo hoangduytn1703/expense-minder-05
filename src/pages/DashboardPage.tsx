@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -158,14 +159,14 @@ function DashboardContent() {
   };
   
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
         <main className="flex-1 p-6">
           <div className="max-w-5xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Tổng Quan Tài Chính</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tổng Quan Tài Chính</h1>
             </div>
             
             <div className="mb-8">
@@ -178,10 +179,10 @@ function DashboardContent() {
             </div>
             
             {loading || isDataUpdating ? (
-              <div className="bg-white rounded-xl p-10 shadow-sm text-center">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-10 shadow-sm text-center">
                 <div role="status" className="flex justify-center items-center flex-col">
                   <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                  <p className="mt-4 text-lg">Đang tải dữ liệu...</p>
+                  <p className="mt-4 text-lg dark:text-white">Đang tải dữ liệu...</p>
                 </div>
               </div>
             ) : (
@@ -205,13 +206,13 @@ function DashboardContent() {
                 </div>
                 
                 {previousMonthRemaining > 0 && (
-                  <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
-                    <p className="text-gray-500 mb-2">Thông tin từ tháng trước</p>
-                    <p className="text-sm flex justify-between">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-8">
+                    <p className="text-gray-500 dark:text-gray-400 mb-2">Thông tin từ tháng trước</p>
+                    <p className="text-sm flex justify-between dark:text-gray-300">
                       <span>Số dư còn lại tháng {previousMonthInfo}:</span>
-                      <span className="font-semibold text-green-600">{new Intl.NumberFormat('vi-VN').format(previousMonthRemaining)} đ</span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat('vi-VN').format(previousMonthRemaining)} đ</span>
                     </p>
-                    <p className="text-xs text-gray-500 mt-2 italic">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
                       Đây chỉ là thông tin tham khảo. Hãy thêm khoản thu nhập để đưa số dư này vào tháng hiện tại.
                     </p>
                   </div>
@@ -240,8 +241,8 @@ function DashboardContent() {
                   }}
                 </BudgetTabs>
                 
-                <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
-                  <h2 className="text-xl font-bold mb-4">Quản Lý Nợ</h2>
+                <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                  <h2 className="text-xl font-bold mb-4 dark:text-white">Quản Lý Nợ</h2>
                   <DebtManagement onUpdate={handleDataUpdate} />
                 </div>
               </>

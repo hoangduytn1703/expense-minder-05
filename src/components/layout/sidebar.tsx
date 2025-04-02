@@ -8,17 +8,20 @@ import {
   Settings, 
   CreditCard,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from "lucide-react";
 import { useAssets } from "@/contexts/AssetsContext";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { debtAPI } from "@/lib/api";
+import { isAdmin } from "@/lib/auth";
 
 export default function Sidebar() {
   const { totalAssets, percentageSpent } = useAssets();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [totalDebt, setTotalDebt] = useState(0);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   const menuItems = [
     {
@@ -48,6 +51,11 @@ export default function Sidebar() {
     }
   ];
 
+  // Check if user is admin
+  useEffect(() => {
+    setUserIsAdmin(isAdmin());
+  }, []);
+
   // Fetch total debt
   const fetchTotalDebt = async () => {
     try {
@@ -65,7 +73,7 @@ export default function Sidebar() {
 
   return (
     <aside 
-      className={`bg-white dark:bg-gray-800 min-h-screen border-r dark:border-gray-700 relative transition-all duration-300 ${
+      className={`bg-sidebar dark:bg-gray-800 min-h-screen border-r dark:border-gray-700 relative transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       }`}
     >
@@ -110,6 +118,24 @@ export default function Sidebar() {
                 </NavLink>
               </li>
             ))}
+            
+            {userIsAdmin && (
+              <li>
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) =>
+                    `flex items-center ${isCollapsed ? "justify-center" : "px-4"} py-3 rounded-lg transition-colors ${
+                      isActive
+                        ? "bg-blue-600 text-white"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                    }`
+                  }
+                >
+                  <Shield className="h-5 w-5" />
+                  {!isCollapsed && <span className="ml-3 font-medium">Quản trị</span>}
+                </NavLink>
+              </li>
+            )}
           </ul>
         </nav>
         
