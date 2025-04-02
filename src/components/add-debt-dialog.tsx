@@ -1,13 +1,14 @@
-import { useState, useContext } from "react";
+
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { debtAPI, Debt } from "@/lib/api";
-import { AssetsContext } from "@/contexts/AssetsContext";
-import { formatNumberInput, parseFormattedNumber, formatCurrency } from "@/lib/utils";
+import { formatNumberInput, parseFormattedNumber, formatCurrency, getMonthOptions, getYearOptions, calculateMonthlyPayment } from "@/lib/utils";
 
 interface AddDebtDialogProps {
   onUpdate: () => void;
