@@ -7,7 +7,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Debt, debtAPI } from "@/lib/api";
 import { formatCurrency, calculateMonthlyPayment, getMonthOptions, getYearOptions, formatNumberInput, parseFormattedNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -19,17 +29,9 @@ interface DebtManagementProps {
 export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
-  // Form fields for new debt
-  const [name, setName] = useState("");
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [formattedTotalAmount, setFormattedTotalAmount] = useState("");
-  const [months, setMonths] = useState(1);
-  const [startMonth, setStartMonth] = useState(new Date().getMonth() + 1);
-  const [startYear, setStartYear] = useState(new Date().getFullYear());
-  const [note, setNote] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
   
   // Form fields for editing
   const [editName, setEditName] = useState("");
@@ -74,62 +76,11 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
     fetchDebts();
   }, []);
 
-  // Handle amount input change with formatting
-  const handleAmountChange = (value: string) => {
-    const formatted = formatNumberInput(value);
-    setFormattedTotalAmount(formatted);
-    setTotalAmount(parseFormattedNumber(formatted));
-  };
-
   // Handle edit amount input change with formatting
   const handleEditAmountChange = (value: string) => {
     const formatted = formatNumberInput(value);
     setEditFormattedTotalAmount(formatted);
     setEditTotalAmount(parseFormattedNumber(formatted));
-  };
-  
-  // Create a new debt
-  const addDebt = async () => {
-    try {
-      if (!name || totalAmount <= 0 || months <= 0) {
-        toast({
-          title: "Lỗi",
-          description: "Vui lòng điền đầy đủ thông tin",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      await debtAPI.create({
-        name,
-        totalAmount,
-        months,
-        startMonth,
-        startYear,
-        note,
-        monthlyPayment: calculateMonthlyPayment(totalAmount, months)
-      });
-      
-      toast({
-        title: "Thành công",
-        description: "Đã thêm khoản nợ mới",
-      });
-      
-      // Reset form
-      setIsAdding(false);
-      setName("");
-      setTotalAmount(0);
-      setMonths(1);
-      setStartMonth(new Date().getMonth() + 1);
-      setStartYear(new Date().getFullYear());
-      setNote("");
-      
-      // Reload data
-      fetchDebts();
-      onUpdate();
-    } catch (error) {
-      console.error("Error adding debt:", error);
-    }
   };
   
   // Start editing a debt
@@ -179,9 +130,17 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
     }
   };
   
+  // Prepare to delete a debt
+  const confirmDeleteDebt = (debt: Debt) => {
+    setDebtToDelete(debt);
+    setDeleteDialogOpen(true);
+  };
+  
   // Delete a debt
-  const deleteDebt = async (debt: Debt) => {
-    const id = debt._id || debt.id;
+  const deleteDebt = async () => {
+    if (!debtToDelete) return;
+    
+    const id = debtToDelete._id || debtToDelete.id;
     if (!id) {
       toast({
         title: "Lỗi",
@@ -191,25 +150,25 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
       return;
     }
     
-    if (window.confirm("Bạn có chắc muốn xóa khoản nợ này không?")) {
-      try {
-        await debtAPI.delete(id);
-        
-        toast({
-          title: "Thành công",
-          description: "Đã xóa khoản nợ",
-        });
-        
-        fetchDebts();
-        onUpdate();
-      } catch (error) {
-        console.error("Error deleting debt:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể xóa khoản nợ. Vui lòng thử lại sau.",
-          variant: "destructive",
-        });
-      }
+    try {
+      await debtAPI.delete(id);
+      
+      toast({
+        title: "Thành công",
+        description: "Đã xóa khoản nợ",
+      });
+      
+      setDeleteDialogOpen(false);
+      setDebtToDelete(null);
+      fetchDebts();
+      onUpdate();
+    } catch (error) {
+      console.error("Error deleting debt:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa khoản nợ. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -219,9 +178,9 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
   };
   
   return (
-    <Card className="mt-8">
-      <CardHeader className="bg-orange-100">
-        <CardTitle>Quản lý nợ</CardTitle>
+    <Card>
+      <CardHeader className="bg-orange-100 dark:bg-orange-900/20">
+        <CardTitle>Danh sách khoản nợ</CardTitle>
         <CardDescription>
           Theo dõi các khoản nợ và tự động tính toán khoản trả hàng tháng
         </CardDescription>
@@ -352,7 +311,7 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                           size="icon"
                           variant="ghost"
                           className="text-red-500 hover:text-red-700"
-                          onClick={() => deleteDebt(debt)}
+                          onClick={() => confirmDeleteDebt(debt)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -362,97 +321,25 @@ export default function DebtManagement({ onUpdate }: DebtManagementProps) {
                 </TableRow>
               ))
             )}
-            
-            {isAdding && (
-              <TableRow>
-                <TableCell>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Tên khoản nợ"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="text"
-                    value={formattedTotalAmount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    placeholder="Tổng nợ"
-                    className="w-28"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={months}
-                    onChange={(e) => setMonths(Number(e.target.value))}
-                    placeholder="Số tháng"
-                    className="w-16"
-                    min="1"
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <select
-                      className="w-24 border rounded p-2"
-                      value={startMonth}
-                      onChange={(e) => setStartMonth(Number(e.target.value))}
-                    >
-                      {monthOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="w-20 border rounded p-2"
-                      value={startYear}
-                      onChange={(e) => setStartYear(Number(e.target.value))}
-                    >
-                      {yearOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {totalAmount > 0 && months > 0
-                    ? `${formatCurrency(calculateMonthlyPayment(totalAmount, months))} đ`
-                    : ""}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Ghi chú"
-                  />
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end space-x-2">
-                    <Button size="sm" onClick={addDebt}>
-                      Lưu
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setIsAdding(false)}>
-                      Hủy
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
         
-        {!isAdding && (
-          <Button
-            variant="outline"
-            className="mt-4 flex items-center gap-2"
-            onClick={() => setIsAdding(true)}
-          >
-            <PlusCircle className="h-4 w-4" /> Thêm khoản nợ
-          </Button>
-        )}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc muốn xóa khoản nợ này không? Hành động này không thể hoàn tác.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={deleteDebt} className="bg-red-500 hover:bg-red-600">
+                Xóa
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
