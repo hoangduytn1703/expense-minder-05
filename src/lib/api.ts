@@ -39,6 +39,7 @@ export interface Debt {
   monthlyPayment?: number;
   startMonth: number;
   startYear: number;
+  isPaid?: boolean;
 }
 
 export interface Summary {
@@ -48,9 +49,11 @@ export interface Summary {
   totalExpense: number;
   remaining: number;
   previousMonthRemaining: number;
+  totalAllTimeIncome?: number;
+  totalAllTimeExpense?: number;
 }
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 const request = async (path: string, method: string, data?: any) => {
   const token = localStorage.getItem("token");
@@ -113,7 +116,7 @@ export const debtAPI = {
 export const summaryAPI = {
   getMonthSummary: (month: number, year: number) =>
     request(`/summary?month=${month}&year=${year}`, "GET") as Promise<Summary>,
-  getTotalAssets: () => request("/summary/assets", "GET") as Promise<{ totalAssets: number }>,
+  getTotalAssets: () => request("/summary/assets", "GET") as Promise<{ totalAssets: number; totalAllTimeIncome?: number; totalAllTimeExpense?: number; }>,
 };
 
 export const authAPI = {
