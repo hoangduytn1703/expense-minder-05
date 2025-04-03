@@ -1,7 +1,13 @@
 
-import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState } from "react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { 
+  Drawer,
+  DrawerContent,
+  DrawerTrigger
+} from "@/components/ui/drawer";
+import { Calendar } from "@/components/ui/calendar";
 
 interface MonthSelectorProps {
   month: number;
@@ -16,8 +22,9 @@ export default function MonthSelector({
   onChange, 
   isLoading = false 
 }: MonthSelectorProps) {
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const minYear = 2025;
-  const maxYear = 2028;
+  const maxYear = 2125;
   
   const monthNames = [
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", 
@@ -65,6 +72,26 @@ export default function MonthSelector({
     
     onChange(newMonth, newYear);
   };
+
+  const handleMonthYearSelect = (selectedDate: Date | undefined) => {
+    if (!selectedDate) return;
+    
+    const newMonth = selectedDate.getMonth() + 1; // JavaScript months are 0-indexed
+    const newYear = selectedDate.getFullYear();
+    
+    // Validate against min/max bounds
+    if (newYear < minYear || newYear > maxYear) return;
+    
+    onChange(newMonth, newYear);
+    setIsDrawerOpen(false);
+  };
+  
+  // Generate a date for the current month/year for the calendar component
+  const currentDateForCalendar = new Date(year, month - 1, 1);
+
+  // Set the minimum and maximum selectable dates
+  const minDate = new Date(minYear, 0, 1);  // January 1, 2025
+  const maxDate = new Date(maxYear, 11, 31); // December 31, 2125
   
   return (
     <div className="flex items-center justify-center space-x-4 bg-white rounded-full shadow-md px-5 py-2 w-fit mx-auto">
@@ -77,9 +104,34 @@ export default function MonthSelector({
       >
         <ChevronLeft className="h-5 w-5" />
       </Button>
-      <div className="text-xl font-medium min-w-[150px] text-center">
-        {monthNames[month-1]} {year}
-      </div>
+      
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <DrawerTrigger asChild>
+          <Button 
+            variant="ghost"
+            className="text-xl font-medium min-w-[150px] text-center hover:bg-gray-100 flex items-center justify-center gap-2"
+            disabled={isLoading}
+          >
+            <span>{monthNames[month-1]} {year}</span>
+            <CalendarIcon className="h-4 w-4" />
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent>
+          <div className="p-4">
+            <h3 className="text-lg font-medium text-center mb-4">Chọn tháng và năm</h3>
+            <Calendar
+              mode="month"
+              selected={currentDateForCalendar}
+              onSelect={handleMonthYearSelect}
+              fromDate={minDate}
+              toDate={maxDate}
+              disabled={isLoading}
+              initialFocus
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+      
       <Button 
         variant="ghost" 
         size="icon" 

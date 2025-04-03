@@ -7,8 +7,7 @@ import {
   BarChart3, 
   Settings, 
   CreditCard,
-  ChevronLeft,
-  ChevronRight
+  Menu
 } from "lucide-react";
 import { useAssets } from "@/contexts/AssetsContext";
 import { formatCurrency } from "@/lib/utils";
@@ -88,10 +87,10 @@ export default function Sidebar() {
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute -right-3 top-20 bg-white dark:bg-gray-700 shadow-md rounded-full border border-gray-200 dark:border-gray-600 z-10"
         >
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          <Menu className="h-4 w-4" />
         </Button>
         
-        <nav>
+        <nav className="mb-6">
           <ul className="space-y-1">
             {menuItems.map((item) => (
               <li key={item.path}>
@@ -113,7 +112,7 @@ export default function Sidebar() {
           </ul>
         </nav>
         
-        <div className="px-4 py-6 mt-auto">
+        <div className={`px-4 py-4 ${isCollapsed ? "text-center" : ""} mt-6 border-t border-gray-200 dark:border-gray-700`}>
           <div className={`bg-gray-50 dark:bg-gray-700 p-4 rounded-lg ${isCollapsed ? "text-center" : ""}`}>
             <p className={`text-sm text-gray-600 dark:text-gray-300 ${isCollapsed ? "text-center" : ""}`}>
               {!isCollapsed ? "Tổng tài sản" : "TS"}
