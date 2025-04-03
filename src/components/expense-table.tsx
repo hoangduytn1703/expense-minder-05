@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Expense, expenseAPI } from "@/lib/api";
-import { formatCurrency, getExpenseCategoryName, getExpenseCategories } from "@/lib/utils";
+import { formatCurrency, getExpenseCategoryName, expenseCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import EditExpenseDialog from "./edit-expense-dialog";
 import AddExpenseDialog from "./add-expense-dialog";
@@ -26,6 +26,7 @@ interface ExpenseTableProps {
   expenses: Expense[];
   month: number;
   year: number;
+  categories?: typeof expenseCategories;
   onUpdate: () => void;
 }
 
@@ -33,6 +34,7 @@ export default function ExpenseTable({
   expenses, 
   month, 
   year, 
+  categories = expenseCategories,
   onUpdate 
 }: ExpenseTableProps) {
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
@@ -41,12 +43,6 @@ export default function ExpenseTable({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
-  const [categories, setCategories] = useState(getExpenseCategories());
-  
-  // Refresh categories whenever component mounts or expenses change
-  useEffect(() => {
-    setCategories(getExpenseCategories());
-  }, [expenses]);
   
   useEffect(() => {
     const mergedExpenses: Expense[] = [];
@@ -65,7 +61,7 @@ export default function ExpenseTable({
           month,
           year,
           amount: 0,
-          scope: category.scope || "personal",
+          scope: category.scope,
           note: ""
         });
       }
@@ -137,7 +133,7 @@ export default function ExpenseTable({
             return (
               <TableRow key={expense.category}>
                 <TableCell>{getExpenseCategoryName(expense.category)}</TableCell>
-                <TableCell>{expense.scope === "personal" ? "Cá nhân" : "Gia đình"}</TableCell>
+                <TableCell>{expense.scope}</TableCell>
                 <TableCell>{formatCurrency(expense.amount)} đ</TableCell>
                 <TableCell>
                   {expense.actualAmount ? `${formatCurrency(expense.actualAmount)} đ` : ""}
@@ -203,6 +199,7 @@ export default function ExpenseTable({
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSave={onUpdate}
+        categories={categories}
       />
 
       {/* Delete confirmation dialog */}

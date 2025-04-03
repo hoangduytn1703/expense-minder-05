@@ -33,7 +33,7 @@ export default function AddIncomeDialog({
   onSave,
   categories = incomeCategories
 }: AddIncomeDialogProps) {
-  const [category, setCategory] = useState(categories[0]?.id || "");
+  const [category, setCategory] = useState(categories[0].id);
   const [amount, setAmount] = useState('0');
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -59,7 +59,7 @@ export default function AddIncomeDialog({
       });
 
       // Reset form
-      setCategory(categories[0]?.id || "");
+      setCategory(categories[0].id);
       setAmount('0');
       setNote("");
       
