@@ -31,7 +31,7 @@ export function parseFormattedNumber(formattedValue: string): number {
   return numericString ? parseInt(numericString, 10) : 0;
 }
 
-interface Category {
+export interface Category {
   id: string;
   name: string;
   scope?: string;
@@ -114,4 +114,51 @@ export function getCategoryName(id: string, type: 'income' | 'expense'): string 
   const categories = type === 'income' ? getIncomeCategories() : getExpenseCategories();
   const category = categories.find(cat => cat.id === id);
   return category ? category.name : id;
+}
+
+// Helper function to get income category name by id
+export function getIncomeCategoryName(id: string): string {
+  return getCategoryName(id, 'income');
+}
+
+// Helper function to get expense category name by id
+export function getExpenseCategoryName(id: string): string {
+  return getCategoryName(id, 'expense');
+}
+
+// Generate month options for select inputs
+export function getMonthOptions() {
+  return [
+    { value: 1, label: 'Tháng 1' },
+    { value: 2, label: 'Tháng 2' },
+    { value: 3, label: 'Tháng 3' },
+    { value: 4, label: 'Tháng 4' },
+    { value: 5, label: 'Tháng 5' },
+    { value: 6, label: 'Tháng 6' },
+    { value: 7, label: 'Tháng 7' },
+    { value: 8, label: 'Tháng 8' },
+    { value: 9, label: 'Tháng 9' },
+    { value: 10, label: 'Tháng 10' },
+    { value: 11, label: 'Tháng 11' },
+    { value: 12, label: 'Tháng 12' }
+  ];
+}
+
+// Generate year options for select inputs
+export function getYearOptions() {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  
+  // From 2025 to 2125 as specified
+  for (let year = 2025; year <= 2125; year++) {
+    years.push({ value: year, label: `Năm ${year}` });
+  }
+  
+  return years;
+}
+
+// Calculate monthly payment for debt
+export function calculateMonthlyPayment(totalAmount: number, months: number): number {
+  if (months <= 0) return 0;
+  return Math.round(totalAmount / months);
 }
