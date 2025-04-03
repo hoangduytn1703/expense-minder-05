@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -10,7 +11,7 @@ import IncomeTable from "@/components/income-table";
 import ExpenseTable from "@/components/expense-table";
 import DebtManagement from "@/components/debt-management";
 import { Income, Expense, incomeAPI, expenseAPI, summaryAPI } from "@/lib/api";
-import { incomeCategories, expenseCategories } from "@/lib/utils";
+import { getIncomeCategories, getExpenseCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { AssetsProvider, useAssets } from "@/contexts/AssetsContext";
@@ -76,7 +77,9 @@ function DashboardContent() {
       // Refresh total assets after data changes
       await refreshTotalAssets();
       
-      prepareDisplayData(incomesData, expensesData);
+      // Use the latest categories from localStorage
+      prepareDisplayData(incomesData, expensesData, getIncomeCategories(), getExpenseCategories());
+      
       setTimeout(() => {
         setLoading(false);
         setIsDataUpdating(false);
@@ -96,7 +99,7 @@ function DashboardContent() {
     }
   };
   
-  const prepareDisplayData = (incomesData: Income[], expensesData: Expense[]) => {
+  const prepareDisplayData = (incomesData: Income[], expensesData: Expense[], incomeCategories: any[], expenseCategories: any[]) => {
     const incomeMap = new Map();
     incomesData.forEach(income => {
       incomeMap.set(income.category, income);
@@ -133,7 +136,7 @@ function DashboardContent() {
           month,
           year,
           amount: 0,
-          scope: category.scope,
+          scope: category.scope || "personal",
           note: ""
         });
       }
@@ -224,7 +227,6 @@ function DashboardContent() {
                         incomes={displayedIncomes} 
                         month={month} 
                         year={year}
-                        categories={incomeCategories}
                         onUpdate={handleDataUpdate} 
                       />
                     ),
@@ -233,7 +235,6 @@ function DashboardContent() {
                         expenses={displayedExpenses} 
                         month={month} 
                         year={year}
-                        categories={expenseCategories}
                         onUpdate={handleDataUpdate} 
                       />
                     ),

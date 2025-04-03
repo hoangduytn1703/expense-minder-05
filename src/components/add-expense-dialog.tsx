@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { expenseAPI } from "@/lib/api";
-import { formatNumberInput, parseFormattedNumber, expenseCategories } from "@/lib/utils";
+import { formatNumberInput, parseFormattedNumber, getExpenseCategories } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 interface AddExpenseDialogProps {
@@ -21,7 +21,6 @@ interface AddExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
-  categories?: typeof expenseCategories;
 }
 
 export default function AddExpenseDialog({ 
@@ -29,21 +28,31 @@ export default function AddExpenseDialog({
   year, 
   open, 
   onOpenChange, 
-  onSave,
-  categories = expenseCategories
+  onSave
 }: AddExpenseDialogProps) {
-  const [category, setCategory] = useState(categories[0].id);
+  const [categories, setCategories] = useState(getExpenseCategories());
+  const [category, setCategory] = useState(categories[0]?.id || "");
   const [amount, setAmount] = useState('0');
   const [actualAmount, setActualAmount] = useState('');
   const [note, setNote] = useState("");
-  const [scope, setScope] = useState(categories[0].scope);
+  const [scope, setScope] = useState(categories[0]?.scope || "personal");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Load categories when dialog opens
+  useEffect(() => {
+    if (open) {
+      const updatedCategories = getExpenseCategories();
+      setCategories(updatedCategories);
+      setCategory(updatedCategories[0]?.id || "");
+      setScope(updatedCategories[0]?.scope || "personal");
+    }
+  }, [open]);
 
   // Update scope when category changes
   useEffect(() => {
     const selectedCategory = categories.find(cat => cat.id === category);
     if (selectedCategory) {
-      setScope(selectedCategory.scope);
+      setScope(selectedCategory.scope || "personal");
     }
   }, [category, categories]);
 
@@ -69,7 +78,6 @@ export default function AddExpenseDialog({
       });
 
       // Reset form
-      setCategory(categories[0].id);
       setAmount('0');
       setActualAmount('');
       setNote("");
@@ -127,7 +135,7 @@ export default function AddExpenseDialog({
             </label>
             <Input
               id="scope"
-              value={scope}
+              value={scope === "personal" ? "Cá nhân" : "Gia đình"}
               readOnly
               className="col-span-3 bg-gray-100"
             />

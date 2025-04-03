@@ -44,6 +44,10 @@ export default function EditExpenseDialog({
       if (id) {
         // Update existing expense
         await expenseAPI.update(id, { 
+          month: expense.month,
+          year: expense.year,
+          category: expense.category,
+          scope: expense.scope,
           amount: parsedAmount, 
           actualAmount: parsedActualAmount,
           note 
