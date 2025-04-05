@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
@@ -5,10 +6,10 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MonthSelector from "@/components/month-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IncomeTable } from "@/components/income-table";
-import { ExpenseTable } from "@/components/expense-table";
-import { AddIncomeDialog } from "@/components/add-income-dialog";
-import { AddExpenseDialog } from "@/components/add-expense-dialog";
+import IncomeTable from "@/components/income-table";
+import ExpenseTable from "@/components/expense-table";
+import AddIncomeDialog from "@/components/add-income-dialog";
+import AddExpenseDialog from "@/components/add-expense-dialog";
 import { useIncomes } from "@/hooks/use-incomes";
 import { useExpenses } from "@/hooks/use-expenses";
 import { useCategories } from "@/hooks/use-categories";
