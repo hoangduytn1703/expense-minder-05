@@ -1,9 +1,9 @@
-
 import { getCurrentUserId } from './auth';
 
 // Interfaces
 export interface Income {
   id?: string;
+  _id?: string;
   category: string;
   amount: number;
   month: number;
@@ -13,6 +13,7 @@ export interface Income {
 
 export interface Expense {
   id?: string;
+  _id?: string;
   category: string;
   amount: number;
   month: number;
@@ -35,6 +36,17 @@ export interface Debt {
   isPaid: boolean;
 }
 
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  scope: "S" | "L" | "C" | "B" | "Đ";
+}
+
+export interface IncomeCategory {
+  id: string;
+  name: string;
+}
+
 // Helper function for API simulation
 const fetchAPI = async (endpoint: string, method: string = 'GET', data?: any) => {
   // Simulate API delay
@@ -51,6 +63,8 @@ const fetchAPI = async (endpoint: string, method: string = 'GET', data?: any) =>
       incomes: `incomes_${userId}`,
       expenses: `expenses_${userId}`,
       debts: `debts_${userId}`,
+      expenseCategories: `expenseCategories_${userId}`,
+      incomeCategories: `incomeCategories_${userId}`,
     };
     
     if (endpoint.includes('/incomes')) {
@@ -61,12 +75,90 @@ const fetchAPI = async (endpoint: string, method: string = 'GET', data?: any) =>
       return handleDebts(endpoint, method, data, storageKeys.debts);
     } else if (endpoint.includes('/summary')) {
       return handleSummary(endpoint, storageKeys);
+    } else if (endpoint.includes('/expense-categories')) {
+      return handleCategories(endpoint, method, data, storageKeys.expenseCategories);
+    } else if (endpoint.includes('/income-categories')) {
+      return handleCategories(endpoint, method, data, storageKeys.incomeCategories);
     }
     
     throw new Error('Invalid endpoint');
   } catch (error) {
     console.error('API error:', error);
     throw error;
+  }
+};
+
+// Handle categories data
+const handleCategories = (endpoint: string, method: string, data: any, storageKey: string) => {
+  // Get existing data or initialize with default categories
+  let categories = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  
+  // Initialize with default categories if empty
+  if (categories.length === 0) {
+    if (storageKey.includes('expenseCategories')) {
+      categories = [
+        { id: 'breakfast', name: 'Ăn sáng', scope: 'S' },
+        { id: 'lunch', name: 'Ăn trưa', scope: 'S' },
+        { id: 'dinner', name: 'Ăn tối', scope: 'S' },
+        { id: 'shopping', name: 'Mua sắm', scope: 'S' },
+        { id: 'rent', name: 'Thuê nhà', scope: 'L' },
+        { id: 'sendHome', name: 'Gửi về nhà', scope: 'L' },
+        { id: 'transport', name: 'Di chuyển', scope: 'C' },
+        { id: 'fee', name: 'Học phí', scope: 'C' },
+        { id: 'entertainment', name: 'Giải trí', scope: 'B' },
+        { id: 'longTermSaving', name: 'Tiết kiệm dài hạn', scope: 'Đ' },
+        { id: 'emergencySaving', name: 'Quỹ khẩn cấp', scope: 'Đ' },
+        { id: 'investment', name: 'Đầu tư', scope: 'Đ' },
+        { id: 'debtPayment', name: 'Trả nợ', scope: 'Đ' },
+        { id: 'creditPayment', name: 'Trả thẻ tín dụng', scope: 'Đ' },
+        { id: 'additional', name: 'Chi phí phát sinh', scope: 'S' },
+        { id: 'special', name: 'Chi phí đặc biệt', scope: 'S' },
+      ];
+    } else {
+      categories = [
+        { id: 'salary', name: 'Lương' },
+        { id: 'freelance', name: 'Freelance' },
+        { id: 'bonus', name: 'Thưởng' },
+        { id: 'debtCollection', name: 'Thu nợ' },
+        { id: 'previousMonth', name: 'Từ tháng trước' },
+        { id: 'advance', name: 'Tạm ứng' },
+        { id: 'hui', name: 'Hụi/Họ' },
+        { id: 'other', name: 'Khác' },
+      ];
+    }
+    localStorage.setItem(storageKey, JSON.stringify(categories));
+  }
+  
+  if (method === 'GET') {
+    return categories;
+  }
+  
+  if (method === 'POST') {
+    const newCategory = { ...data };
+    
+    // Check if category with same id already exists
+    const exists = categories.some((cat: any) => cat.id === newCategory.id);
+    if (exists) {
+      throw new Error('Category with this ID already exists');
+    }
+    
+    categories.push(newCategory);
+    localStorage.setItem(storageKey, JSON.stringify(categories));
+    return newCategory;
+  }
+  
+  if (method === 'PUT') {
+    const updatedCategories = categories.map((cat: any) => 
+      cat.id === data.id ? data : cat
+    );
+    localStorage.setItem(storageKey, JSON.stringify(updatedCategories));
+    return data;
+  }
+  
+  if (method === 'DELETE') {
+    const filteredCategories = categories.filter((cat: any) => cat.id !== data);
+    localStorage.setItem(storageKey, JSON.stringify(filteredCategories));
+    return { success: true };
   }
 };
 
@@ -288,4 +380,19 @@ export const summaryAPI = {
   getMonthSummary: async (month: number, year: number) => 
     fetchAPI(`/api/summary/month?month=${month}&year=${year}`),
   getTotalAssets: async () => fetchAPI('/api/summary/total-assets')
+};
+
+// Category APIs
+export const expenseCategoryAPI = {
+  getAll: async () => fetchAPI('/api/expense-categories'),
+  create: async (data: ExpenseCategory) => fetchAPI('/api/expense-categories', 'POST', data),
+  update: async (data: ExpenseCategory) => fetchAPI('/api/expense-categories', 'PUT', data),
+  delete: async (id: string) => fetchAPI('/api/expense-categories', 'DELETE', id)
+};
+
+export const incomeCategoryAPI = {
+  getAll: async () => fetchAPI('/api/income-categories'),
+  create: async (data: IncomeCategory) => fetchAPI('/api/income-categories', 'POST', data),
+  update: async (data: IncomeCategory) => fetchAPI('/api/income-categories', 'PUT', data),
+  delete: async (id: string) => fetchAPI('/api/income-categories', 'DELETE', id)
 };

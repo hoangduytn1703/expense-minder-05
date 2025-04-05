@@ -1,89 +1,86 @@
 
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { 
-  LayoutDashboard, 
-  PiggyBank, 
+  Home, 
   BarChart3, 
   Settings, 
   CreditCard,
-  Menu
+  Menu,
+  Folder
 } from "lucide-react";
 import { useAssets } from "@/contexts/AssetsContext";
 import { formatCurrency } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { debtAPI } from "@/lib/api";
+import { useMediaQuery } from "@/hooks/use-mobile";
 
-export default function Sidebar() {
-  const { totalAssets, percentageSpent } = useAssets();
+interface SidebarProps {
+  className?: string;
+}
+
+export default function Sidebar({ className }: SidebarProps) {
+  const { totalAssets, totalDebts } = useAssets();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [totalDebt, setTotalDebt] = useState(0);
-
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  
+  // Auto-collapse on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsCollapsed(true);
+    }
+  }, [isMobile]);
+  
   const menuItems = [
     {
-      title: "Tổng Quan",
+      name: "Tổng quan",
       path: "/dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
+      icon: Home
     },
     {
-      title: "Quản lý nợ",
+      name: "Quản lý nợ",
       path: "/debts",
-      icon: <PiggyBank className="h-5 w-5" />,
+      icon: CreditCard 
     },
     {
-      title: "Báo cáo",
+      name: "Danh mục",
+      path: "/categories",
+      icon: Folder
+    },
+    {
+      name: "Báo cáo",
       path: "/reports",
-      icon: <BarChart3 className="h-5 w-5" />,
+      icon: BarChart3
     },
     {
-      title: "Thẻ tín dụng",
-      path: "/credit",
-      icon: <CreditCard className="h-5 w-5" />,
-    },
-    {
-      title: "Cài đặt",
-      path: "/settings",
-      icon: <Settings className="h-5 w-5" />,
+      name: "Cài đặt",
+      path: "/admin",
+      icon: Settings
     }
   ];
-
-  // Fetch total debt
-  const fetchTotalDebt = async () => {
-    try {
-      const debts = await debtAPI.getAll();
-      const total = debts.reduce((sum, debt) => sum + debt.totalAmount, 0);
-      setTotalDebt(total);
-    } catch (error) {
-      console.error("Error fetching total debt:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchTotalDebt();
-  }, []);
-
+  
   return (
-    <aside 
-      className={`bg-white dark:bg-gray-800 min-h-screen border-r dark:border-gray-700 relative transition-all duration-300 ${
-        isCollapsed ? "w-20" : "w-64"
-      }`}
+    <div
+      className={cn(
+        "border-r bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-50 transition-all duration-300 flex flex-col h-screen",
+        isCollapsed ? "w-16" : "w-64",
+        className
+      )}
     >
-      <div className="px-4 py-6 h-full flex flex-col">
-        <div className="flex items-center justify-center mb-8">
-          {!isCollapsed && (
-            <>
-              <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-teal-400 rounded-xl flex items-center justify-center text-white font-bold text-xl">M</div>
-              <h2 className="text-xl font-bold ml-3 bg-gradient-to-r from-green-600 to-teal-500 bg-clip-text text-transparent">MoneyTracker</h2>
-            </>
-          )}
-          {isCollapsed && (
-            <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-teal-400 rounded-xl flex items-center justify-center text-white font-bold text-xl">M</div>
-          )}
-        </div>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
+      <div className="p-4 border-b flex items-center gap-2">
+        {!isCollapsed && (
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Quản lý</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Tài chính cá nhân</p>
+          </div>
+        )}
+      </div>
+      
+      <div className="flex-1 flex flex-col justify-between py-4 relative">
+        {/* Collapse toggle button */}
+        <Button
+          size="sm"
+          variant="outline"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute -right-3 top-20 bg-white dark:bg-gray-700 shadow-md rounded-full border border-gray-200 dark:border-gray-600 z-10"
         >
@@ -94,18 +91,20 @@ export default function Sidebar() {
           <ul className="space-y-1">
             {menuItems.map((item) => (
               <li key={item.path}>
-                <NavLink
+                <NavLink 
                   to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center ${isCollapsed ? "justify-center" : "px-4"} py-3 rounded-lg transition-colors ${
-                      isActive
-                        ? "bg-gradient-to-r from-green-500 to-teal-400 text-white"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
-                    }`
+                  className={({ isActive }) => 
+                    cn(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors",
+                      isActive 
+                        ? "bg-gray-100 text-indigo-600 dark:bg-gray-800 dark:text-indigo-400 font-medium" 
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800",
+                      isCollapsed && "justify-center px-2"
+                    )
                   }
                 >
-                  {item.icon}
-                  {!isCollapsed && <span className="ml-3 font-medium">{item.title}</span>}
+                  <item.icon className="h-5 w-5" />
+                  {!isCollapsed && <span>{item.name}</span>}
                 </NavLink>
               </li>
             ))}
@@ -117,36 +116,19 @@ export default function Sidebar() {
             <p className={`text-sm text-gray-600 dark:text-gray-300 ${isCollapsed ? "text-center" : ""}`}>
               {!isCollapsed ? "Tổng tài sản" : "TS"}
             </p>
-            <p className="font-bold text-lg text-gray-900 dark:text-white">
+            <p className={`text-lg font-semibold text-green-600 mb-2 ${isCollapsed ? "text-center" : ""}`}>
               {formatCurrency(totalAssets)} đ
             </p>
             
-            {!isCollapsed && (
-              <>
-                <div className="mt-2 h-1.5 w-full bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-green-500 h-full" 
-                    style={{ width: `${percentageSpent}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  <span>Thu nhập</span>
-                  <span>Chi tiêu</span>
-                </div>
-              </>
-            )}
-            
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-              <p className={`text-sm text-gray-600 dark:text-gray-300 ${isCollapsed ? "text-center" : ""}`}>
-                {!isCollapsed ? "Tổng nợ" : "Nợ"}
-              </p>
-              <p className="font-bold text-lg text-red-500 dark:text-red-400">
-                {formatCurrency(totalDebt)} đ
-              </p>
-            </div>
+            <p className={`text-sm text-gray-600 dark:text-gray-300 mt-4 ${isCollapsed ? "text-center" : ""}`}>
+              {!isCollapsed ? "Tổng nợ" : "Nợ"}
+            </p>
+            <p className={`text-lg font-semibold text-red-600 ${isCollapsed ? "text-center" : ""}`}>
+              {formatCurrency(totalDebts)} đ
+            </p>
           </div>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }

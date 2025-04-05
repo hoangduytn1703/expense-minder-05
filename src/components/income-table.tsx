@@ -6,8 +6,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2, Lock } from "lucide-react";
-import { Income, incomeAPI } from "@/lib/api";
-import { formatCurrency, getIncomeCategoryName, incomeCategories } from "@/lib/utils";
+import { Income, incomeAPI, IncomeCategory, incomeCategoryAPI } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import EditIncomeDialog from "./edit-income-dialog";
 import AddIncomeDialog from "./add-income-dialog";
@@ -26,7 +26,6 @@ interface IncomeTableProps {
   incomes: Income[];
   month: number;
   year: number;
-  categories?: typeof incomeCategories;
   onUpdate: () => void;
 }
 
@@ -34,10 +33,10 @@ export default function IncomeTable({
   incomes, 
   month, 
   year, 
-  categories = incomeCategories,
   onUpdate 
 }: IncomeTableProps) {
   const [displayedIncomes, setDisplayedIncomes] = useState<Income[]>([]);
+  const [categories, setCategories] = useState<IncomeCategory[]>([]);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -45,6 +44,21 @@ export default function IncomeTable({
   const [incomeToDelete, setIncomeToDelete] = useState<Income | null>(null);
   
   useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const cats = await incomeCategoryAPI.getAll();
+        setCategories(cats);
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      }
+    };
+    
+    loadCategories();
+  }, []);
+  
+  useEffect(() => {
+    if (categories.length === 0) return;
+    
     const mergedIncomes: Income[] = [];
     
     const incomeMap = new Map();
@@ -71,6 +85,11 @@ export default function IncomeTable({
   
   const totalIncome = displayedIncomes.reduce((sum, income) => sum + income.amount, 0);
   
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : categoryId;
+  };
+  
   const startEditing = (income: Income) => {
     if (income.category === 'previousMonth') {
       toast({
@@ -95,7 +114,7 @@ export default function IncomeTable({
       return;
     }
     
-    const id = income._id || income.id;
+    const id = income.id || income._id;
     if (!id) {
       toast({
         title: "Thông báo",
@@ -111,7 +130,7 @@ export default function IncomeTable({
   const deleteIncome = async () => {
     if (!incomeToDelete) return;
     
-    const id = incomeToDelete._id || incomeToDelete.id;
+    const id = incomeToDelete.id || incomeToDelete._id;
     if (!id) return;
     
     try {
@@ -145,13 +164,13 @@ export default function IncomeTable({
         </TableHeader>
         <TableBody>
           {displayedIncomes.map((income) => {
-            const actualId = income._id || income.id;
+            const actualId = income.id || income._id;
             const isPreviousMonthItem = isPreviousMonth(income.category);
             
             return (
               <TableRow key={income.category}>
                 <TableCell>
-                  {getIncomeCategoryName(income.category)}
+                  {getCategoryName(income.category)}
                   {isPreviousMonthItem && (
                     <Lock className="h-3 w-3 ml-1 inline text-gray-500" />
                   )}
@@ -229,7 +248,6 @@ export default function IncomeTable({
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSave={onUpdate}
-        categories={categories}
       />
 
       {/* Delete confirmation dialog */}

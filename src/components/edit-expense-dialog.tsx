@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,27 +34,34 @@ export default function EditExpenseDialog({
   const [note, setNote] = useState(expense.note || "");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Reset form when expense changes
+  useEffect(() => {
+    if (open) {
+      setAmount(formatNumberInput(expense.amount.toString()));
+      setActualAmount(expense.actualAmount ? formatNumberInput(expense.actualAmount.toString()) : '');
+      setNote(expense.note || "");
+    }
+  }, [expense, open]);
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
       const parsedAmount = parseFormattedNumber(amount);
       const parsedActualAmount = actualAmount ? parseFormattedNumber(actualAmount) : undefined;
-      const id = expense._id || expense.id;
+      const id = expense.id || expense._id;
 
       if (id) {
         // Update existing expense
-        await expenseAPI.update(id, { 
-          amount: parsedAmount, 
+        await expenseAPI.update({
+          ...expense,
+          amount: parsedAmount,
           actualAmount: parsedActualAmount,
-          note 
+          note
         });
       } else {
         // Create new expense
         await expenseAPI.create({
-          month: expense.month,
-          year: expense.year,
-          category: expense.category,
-          scope: expense.scope,
+          ...expense,
           amount: parsedAmount,
           actualAmount: parsedActualAmount,
           note,

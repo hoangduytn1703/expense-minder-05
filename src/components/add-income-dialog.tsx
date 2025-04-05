@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,13 +7,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { incomeAPI } from "@/lib/api";
-import { formatNumberInput, parseFormattedNumber, incomeCategories } from "@/lib/utils";
+import { Income, incomeAPI, IncomeCategory, incomeCategoryAPI } from "@/lib/api";
+import { formatNumberInput, parseFormattedNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 interface AddIncomeDialogProps {
@@ -22,49 +27,91 @@ interface AddIncomeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
-  categories?: typeof incomeCategories;
 }
 
-export default function AddIncomeDialog({ 
-  month, 
-  year, 
-  open, 
-  onOpenChange, 
+export default function AddIncomeDialog({
+  month,
+  year,
+  open,
+  onOpenChange,
   onSave,
-  categories = incomeCategories
 }: AddIncomeDialogProps) {
-  const [category, setCategory] = useState(categories[0].id);
-  const [amount, setAmount] = useState('0');
+  const [categories, setCategories] = useState<IncomeCategory[]>([]);
+  const [category, setCategory] = useState("");
+  const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const availableCategories = categories.filter(cat => cat.id !== 'previousMonth');
+  // Load categories when the dialog opens
+  useEffect(() => {
+    if (open) {
+      const loadCategories = async () => {
+        try {
+          const cats = await incomeCategoryAPI.getAll();
+          const filteredCats = cats.filter(c => c.id !== 'previousMonth'); // Hide 'previousMonth' from selection
+          setCategories(filteredCats);
+          
+          // Set default category if available
+          if (filteredCats.length > 0 && !category) {
+            setCategory(filteredCats[0].id);
+          }
+        } catch (error) {
+          console.error("Error loading categories:", error);
+        }
+      };
+      
+      loadCategories();
+      resetForm();
+    }
+  }, [open]);
+
+  const resetForm = () => {
+    setCategory("");
+    setAmount("");
+    setNote("");
+    setError("");
+  };
+
+  const validateForm = () => {
+    if (!category) {
+      setError("Vui lòng chọn danh mục");
+      return false;
+    }
+
+    if (!amount) {
+      setError("Vui lòng nhập số tiền");
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSave = async () => {
+    if (!validateForm()) return;
+
     try {
       setIsSaving(true);
       const parsedAmount = parseFormattedNumber(amount);
 
-      await incomeAPI.add({
+      const incomeData: Income = {
+        category,
         month,
         year,
-        category,
         amount: parsedAmount,
         note,
-      });
+      };
+
+      await incomeAPI.create(incomeData);
 
       toast({
         title: "Thành công",
         description: "Đã thêm khoản thu nhập mới",
       });
 
-      // Reset form
-      setCategory(categories[0].id);
-      setAmount('0');
-      setNote("");
-      
       onSave();
       onOpenChange(false);
+      resetForm();
     } catch (error) {
       console.error("Lỗi khi thêm thu nhập:", error);
       toast({
@@ -87,29 +134,32 @@ export default function AddIncomeDialog({
         <DialogHeader>
           <DialogTitle>Thêm khoản thu nhập</DialogTitle>
           <DialogDescription>
-            Nhập thông tin cho khoản thu nhập mới
+            Thêm khoản thu nhập mới cho tháng {month}/{year}
           </DialogDescription>
         </DialogHeader>
+
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="category" className="text-right">
               Danh mục
             </label>
-            <div className="col-span-3">
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCategories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select
+              value={category}
+              onValueChange={setCategory}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Chọn danh mục" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="amount" className="text-right">
               Số tiền
@@ -119,8 +169,10 @@ export default function AddIncomeDialog({
               value={amount}
               onChange={(e) => handleAmountChange(e.target.value)}
               className="col-span-3"
+              placeholder="0"
             />
           </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="note" className="text-right">
               Ghi chú
@@ -130,12 +182,18 @@ export default function AddIncomeDialog({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="col-span-3"
+              placeholder="Ghi chú (không bắt buộc)"
             />
           </div>
+
+          {error && (
+            <div className="text-red-500 text-sm mt-2">{error}</div>
+          )}
         </div>
+
         <DialogFooter>
           <Button type="button" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Đang thêm..." : "Thêm thu nhập"}
+            {isSaving ? "Đang lưu..." : "Thêm"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,7 @@ export default function EditIncomeDialog({
   const [isSaving, setIsSaving] = useState(false);
 
   // Reset form when income changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setAmount(formatNumberInput(income.amount.toString()));
       setNote(income.note || "");
@@ -43,17 +43,19 @@ export default function EditIncomeDialog({
     try {
       setIsSaving(true);
       const parsedAmount = parseFormattedNumber(amount);
-      const id = income._id || income.id;
+      const id = income.id || income._id;
 
       if (id) {
         // Update existing income
-        await incomeAPI.update(id, { amount: parsedAmount, note });
+        await incomeAPI.update({
+          ...income,
+          amount: parsedAmount,
+          note
+        });
       } else {
         // Create new income
         await incomeAPI.create({
-          month: income.month,
-          year: income.year,
-          category: income.category,
+          ...income,
           amount: parsedAmount,
           note,
         });

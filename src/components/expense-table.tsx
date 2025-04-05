@@ -6,8 +6,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
-import { Expense, expenseAPI } from "@/lib/api";
-import { formatCurrency, getExpenseCategoryName, expenseCategories } from "@/lib/utils";
+import { Expense, expenseAPI, ExpenseCategory, expenseCategoryAPI } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import EditExpenseDialog from "./edit-expense-dialog";
 import AddExpenseDialog from "./add-expense-dialog";
@@ -26,7 +26,6 @@ interface ExpenseTableProps {
   expenses: Expense[];
   month: number;
   year: number;
-  categories?: typeof expenseCategories;
   onUpdate: () => void;
 }
 
@@ -34,10 +33,10 @@ export default function ExpenseTable({
   expenses, 
   month, 
   year, 
-  categories = expenseCategories,
   onUpdate 
 }: ExpenseTableProps) {
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -45,6 +44,21 @@ export default function ExpenseTable({
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
   
   useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const cats = await expenseCategoryAPI.getAll();
+        setCategories(cats);
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      }
+    };
+    
+    loadCategories();
+  }, []);
+  
+  useEffect(() => {
+    if (categories.length === 0) return;
+    
     const mergedExpenses: Expense[] = [];
     
     const expenseMap = new Map();
@@ -72,13 +86,18 @@ export default function ExpenseTable({
   
   const totalExpense = displayedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : categoryId;
+  };
+  
   const startEditing = (expense: Expense) => {
     setEditingExpense(expense);
     setIsEditDialogOpen(true);
   };
   
   const confirmDelete = (expense: Expense) => {
-    const id = expense._id || expense.id;
+    const id = expense.id || expense._id;
     if (!id) {
       toast({
         title: "Thông báo",
@@ -94,7 +113,7 @@ export default function ExpenseTable({
   const deleteExpense = async () => {
     if (!expenseToDelete) return;
     
-    const id = expenseToDelete._id || expenseToDelete.id;
+    const id = expenseToDelete.id || expenseToDelete._id;
     if (!id) return;
     
     try {
@@ -128,11 +147,11 @@ export default function ExpenseTable({
         </TableHeader>
         <TableBody>
           {displayedExpenses.map((expense) => {
-            const actualId = expense._id || expense.id;
+            const actualId = expense.id || expense._id;
             
             return (
               <TableRow key={expense.category}>
-                <TableCell>{getExpenseCategoryName(expense.category)}</TableCell>
+                <TableCell>{getCategoryName(expense.category)}</TableCell>
                 <TableCell>{expense.scope}</TableCell>
                 <TableCell>{formatCurrency(expense.amount)} đ</TableCell>
                 <TableCell>
@@ -199,7 +218,6 @@ export default function ExpenseTable({
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSave={onUpdate}
-        categories={categories}
       />
 
       {/* Delete confirmation dialog */}
