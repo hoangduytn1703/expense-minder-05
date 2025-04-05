@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Income, incomeAPI } from "@/lib/api";
 import { formatNumberInput, parseFormattedNumber } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface EditIncomeDialogProps {
   income: Income;
@@ -30,6 +30,7 @@ export default function EditIncomeDialog({
   const [amount, setAmount] = useState(formatNumberInput(income.amount.toString()));
   const [note, setNote] = useState(income.note || "");
   const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   // Reset form when income changes
   useEffect(() => {
@@ -47,14 +48,13 @@ export default function EditIncomeDialog({
 
       if (id) {
         // Update existing income
-        await incomeAPI.update({
-          ...income,
+        await incomeAPI.update(id, {
           amount: parsedAmount,
           note
         });
       } else {
-        // Create new income
-        await incomeAPI.create({
+        // Create new income (should not happen, but just in case)
+        await incomeAPI.add({
           ...income,
           amount: parsedAmount,
           note,

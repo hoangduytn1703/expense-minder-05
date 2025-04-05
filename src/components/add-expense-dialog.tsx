@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Expense, expenseAPI, ExpenseCategory, expenseCategoryAPI } from "@/lib/api";
 import { formatNumberInput, parseFormattedNumber } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface AddExpenseDialogProps {
   month: number;
@@ -27,6 +27,8 @@ interface AddExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
+  categories?: ExpenseCategory[];
+  onSuccess?: () => void;
 }
 
 export default function AddExpenseDialog({
@@ -35,28 +37,41 @@ export default function AddExpenseDialog({
   open,
   onOpenChange,
   onSave,
+  categories: providedCategories,
+  onSuccess,
 }: AddExpenseDialogProps) {
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [actualAmount, setActualAmount] = useState("");
   const [note, setNote] = useState("");
   const [scope, setScope] = useState<"S" | "L" | "C" | "B" | "Đ">("S");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const { toast } = useToast();
 
   // Load categories when the dialog opens
   useEffect(() => {
     if (open) {
       const loadCategories = async () => {
         try {
-          const cats = await expenseCategoryAPI.getAll();
-          setCategories(cats);
-          
-          // Set default category if available
-          if (cats.length > 0 && !category) {
-            setCategory(cats[0].id);
-            setScope(cats[0].scope);
+          if (providedCategories && providedCategories.length > 0) {
+            setCategories(providedCategories);
+            
+            // Set default category if available
+            if (providedCategories.length > 0 && !categoryId) {
+              setCategoryId(providedCategories[0].id);
+              setScope(providedCategories[0].scope);
+            }
+          } else {
+            const cats = await expenseCategoryAPI.getAll();
+            setCategories(cats);
+            
+            // Set default category if available
+            if (cats.length > 0 && !categoryId) {
+              setCategoryId(cats[0].id);
+              setScope(cats[0].scope);
+            }
           }
         } catch (error) {
           console.error("Error loading categories:", error);
@@ -66,10 +81,10 @@ export default function AddExpenseDialog({
       loadCategories();
       resetForm();
     }
-  }, [open]);
+  }, [open, providedCategories, categoryId]);
 
   const resetForm = () => {
-    setCategory("");
+    setCategoryId("");
     setAmount("");
     setActualAmount("");
     setNote("");
@@ -78,7 +93,7 @@ export default function AddExpenseDialog({
   };
 
   const validateForm = () => {
-    if (!category) {
+    if (!categoryId) {
       setError("Vui lòng chọn danh mục");
       return false;
     }
@@ -92,7 +107,7 @@ export default function AddExpenseDialog({
   };
 
   const handleCategoryChange = (value: string) => {
-    setCategory(value);
+    setCategoryId(value);
     
     // Update scope based on selected category
     const selectedCategory = categories.find(c => c.id === value);
@@ -111,8 +126,8 @@ export default function AddExpenseDialog({
         ? parseFormattedNumber(actualAmount)
         : undefined;
 
-      const expenseData: Expense = {
-        category,
+      const expenseData: Omit<Expense, "id"> = {
+        categoryId,
         month,
         year,
         amount: parsedAmount,
@@ -121,13 +136,16 @@ export default function AddExpenseDialog({
         note,
       };
 
-      await expenseAPI.create(expenseData);
+      await expenseAPI.add(expenseData);
 
       toast({
         title: "Thành công",
         description: "Đã thêm khoản chi tiêu mới",
       });
 
+      if (onSuccess) {
+        onSuccess();
+      }
       onSave();
       onOpenChange(false);
       resetForm();
@@ -159,11 +177,11 @@ export default function AddExpenseDialog({
 
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="category" className="text-right">
+            <label htmlFor="categoryId" className="text-right">
               Danh mục
             </label>
             <Select
-              value={category}
+              value={categoryId}
               onValueChange={handleCategoryChange}
             >
               <SelectTrigger className="col-span-3">

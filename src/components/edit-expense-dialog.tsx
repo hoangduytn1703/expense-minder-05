@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Expense, expenseAPI } from "@/lib/api";
 import { formatNumberInput, parseFormattedNumber } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface EditExpenseDialogProps {
   expense: Expense;
@@ -33,6 +33,7 @@ export default function EditExpenseDialog({
   );
   const [note, setNote] = useState(expense.note || "");
   const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   // Reset form when expense changes
   useEffect(() => {
@@ -52,15 +53,14 @@ export default function EditExpenseDialog({
 
       if (id) {
         // Update existing expense
-        await expenseAPI.update({
-          ...expense,
+        await expenseAPI.update(id, {
           amount: parsedAmount,
           actualAmount: parsedActualAmount,
           note
         });
       } else {
-        // Create new expense
-        await expenseAPI.create({
+        // Create new expense (should not happen, but just in case)
+        await expenseAPI.add({
           ...expense,
           amount: parsedAmount,
           actualAmount: parsedActualAmount,

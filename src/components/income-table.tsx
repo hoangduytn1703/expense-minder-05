@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2, Lock } from "lucide-react";
 import { Income, incomeAPI, IncomeCategory, incomeCategoryAPI } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import EditIncomeDialog from "./edit-income-dialog";
 import AddIncomeDialog from "./add-income-dialog";
 import {
@@ -42,6 +42,7 @@ export default function IncomeTable({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [incomeToDelete, setIncomeToDelete] = useState<Income | null>(null);
+  const { toast } = useToast();
   
   useEffect(() => {
     const loadCategories = async () => {
@@ -63,7 +64,10 @@ export default function IncomeTable({
     
     const incomeMap = new Map();
     incomes.forEach(income => {
-      incomeMap.set(income.category, income);
+      const key = income.categoryId || income.category;
+      if (key) {
+        incomeMap.set(key, income);
+      }
     });
     
     categories.forEach(category => {
@@ -71,7 +75,7 @@ export default function IncomeTable({
         mergedIncomes.push(incomeMap.get(category.id));
       } else {
         mergedIncomes.push({
-          category: category.id,
+          categoryId: category.id,
           month,
           year,
           amount: 0,
@@ -91,7 +95,8 @@ export default function IncomeTable({
   };
   
   const startEditing = (income: Income) => {
-    if (income.category === 'previousMonth') {
+    const categoryId = income.categoryId || income.category;
+    if (categoryId === 'previousMonth') {
       toast({
         title: "Không thể chỉnh sửa",
         description: "Không thể chỉnh sửa khoản tiền còn lại từ tháng trước",
@@ -105,7 +110,8 @@ export default function IncomeTable({
   };
   
   const confirmDelete = (income: Income) => {
-    if (income.category === 'previousMonth') {
+    const categoryId = income.categoryId || income.category;
+    if (categoryId === 'previousMonth') {
       toast({
         title: "Không thể xóa",
         description: "Không thể xóa khoản tiền còn lại từ tháng trước",
@@ -142,13 +148,18 @@ export default function IncomeTable({
       onUpdate();
     } catch (error) {
       console.error("Lỗi khi xóa:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa khoản thu nhập",
+        variant: "destructive",
+      });
     } finally {
       setDeleteConfirmOpen(false);
       setIncomeToDelete(null);
     }
   };
   
-  const isPreviousMonth = (category: string) => category === 'previousMonth';
+  const isPreviousMonth = (categoryId: string) => categoryId === 'previousMonth';
   
   return (
     <div>
@@ -165,12 +176,13 @@ export default function IncomeTable({
         <TableBody>
           {displayedIncomes.map((income) => {
             const actualId = income.id || income._id;
-            const isPreviousMonthItem = isPreviousMonth(income.category);
+            const categoryId = income.categoryId || income.category;
+            const isPreviousMonthItem = isPreviousMonth(categoryId || '');
             
             return (
-              <TableRow key={income.category}>
+              <TableRow key={categoryId}>
                 <TableCell>
-                  {getCategoryName(income.category)}
+                  {getCategoryName(categoryId || '')}
                   {isPreviousMonthItem && (
                     <Lock className="h-3 w-3 ml-1 inline text-gray-500" />
                   )}

@@ -4,7 +4,8 @@ import {
   IncomeCategory, 
   ExpenseCategory, 
   incomeCategoryAPI, 
-  expenseCategoryAPI 
+  expenseCategoryAPI,
+  generateId 
 } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,8 +37,13 @@ export function useCategories() {
   }, [toast]);
 
   const addIncomeCategory = useCallback(
-    async (category: Omit<IncomeCategory, 'id'>) => {
+    async (categoryData: Omit<IncomeCategory, 'id'>) => {
       try {
+        const category: IncomeCategory = {
+          ...categoryData,
+          id: generateId()
+        };
+        
         await incomeCategoryAPI.add(category);
         toast({
           title: "Thành công",
@@ -105,8 +111,13 @@ export function useCategories() {
   );
 
   const addExpenseCategory = useCallback(
-    async (category: Omit<ExpenseCategory, 'id'>) => {
+    async (categoryData: Omit<ExpenseCategory, 'id'>) => {
       try {
+        const category: ExpenseCategory = {
+          ...categoryData,
+          id: generateId()
+        };
+        
         await expenseCategoryAPI.add(category);
         toast({
           title: "Thành công",

@@ -19,9 +19,11 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const { incomes, fetchIncomes } = useIncomes(selectedMonth, selectedYear);
-  const { expenses, fetchExpenses } = useExpenses(selectedMonth, selectedYear);
-  const { incomeCategories, expenseCategories, fetchCategories } = useCategories();
+  const { incomes, fetchIncomes, isLoading: incomesLoading } = useIncomes(selectedMonth, selectedYear);
+  const { expenses, fetchExpenses, isLoading: expensesLoading } = useExpenses(selectedMonth, selectedYear);
+  const { incomeCategories, expenseCategories, fetchCategories, isLoading: categoriesLoading } = useCategories();
+  const [isAddIncomeOpen, setIsAddIncomeOpen] = useState(false);
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -63,12 +65,12 @@ export default function DashboardPage() {
                 {/* Income Table */}
                 <TabsContent value="income" className="space-y-4 mt-6">
                   <div className="flex justify-end">
-                    <AddIncomeDialog
-                      month={selectedMonth}
-                      year={selectedYear}
-                      onSuccess={fetchIncomes}
-                      categories={incomeCategories}
-                    />
+                    <Button 
+                      onClick={() => setIsAddIncomeOpen(true)}
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                    >
+                      Thêm thu nhập mới
+                    </Button>
                   </div>
                   
                   <IncomeTable 
@@ -82,12 +84,12 @@ export default function DashboardPage() {
                 {/* Expense Table */}
                 <TabsContent value="expense" className="space-y-4 mt-6">
                   <div className="flex justify-end">
-                    <AddExpenseDialog
-                      month={selectedMonth}
-                      year={selectedYear}
-                      onSuccess={fetchExpenses}
-                      categories={expenseCategories}
-                    />
+                    <Button 
+                      onClick={() => setIsAddExpenseOpen(true)}
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      Thêm chi tiêu mới
+                    </Button>
                   </div>
                   
                   <ExpenseTable 
@@ -102,6 +104,29 @@ export default function DashboardPage() {
           </main>
         </div>
       </div>
+
+      {/* Add Income Dialog */}
+      <AddIncomeDialog
+        month={selectedMonth}
+        year={selectedYear}
+        open={isAddIncomeOpen}
+        onOpenChange={setIsAddIncomeOpen}
+        onSave={fetchIncomes}
+        categories={incomeCategories}
+      />
+
+      {/* Add Expense Dialog */}
+      <AddExpenseDialog
+        month={selectedMonth}
+        year={selectedYear}
+        open={isAddExpenseOpen}
+        onOpenChange={setIsAddExpenseOpen}
+        onSave={fetchExpenses}
+        categories={expenseCategories}
+      />
     </AssetsProvider>
   );
 }
+
+// Import Button component
+import { Button } from "@/components/ui/button";

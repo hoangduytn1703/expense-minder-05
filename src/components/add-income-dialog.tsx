@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Income, incomeAPI, IncomeCategory, incomeCategoryAPI } from "@/lib/api";
 import { formatNumberInput, parseFormattedNumber } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface AddIncomeDialogProps {
   month: number;
@@ -27,6 +27,8 @@ interface AddIncomeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
+  categories?: IncomeCategory[];
+  onSuccess?: () => void;
 }
 
 export default function AddIncomeDialog({
@@ -35,26 +37,37 @@ export default function AddIncomeDialog({
   open,
   onOpenChange,
   onSave,
+  categories: providedCategories,
+  onSuccess,
 }: AddIncomeDialogProps) {
   const [categories, setCategories] = useState<IncomeCategory[]>([]);
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const { toast } = useToast();
 
   // Load categories when the dialog opens
   useEffect(() => {
     if (open) {
       const loadCategories = async () => {
         try {
-          const cats = await incomeCategoryAPI.getAll();
-          const filteredCats = cats.filter(c => c.id !== 'previousMonth'); // Hide 'previousMonth' from selection
-          setCategories(filteredCats);
-          
-          // Set default category if available
-          if (filteredCats.length > 0 && !category) {
-            setCategory(filteredCats[0].id);
+          if (providedCategories && providedCategories.length > 0) {
+            const filteredCats = providedCategories.filter(c => c.id !== 'previousMonth');
+            setCategories(filteredCats);
+            
+            if (filteredCats.length > 0 && !categoryId) {
+              setCategoryId(filteredCats[0].id);
+            }
+          } else {
+            const cats = await incomeCategoryAPI.getAll();
+            const filteredCats = cats.filter(c => c.id !== 'previousMonth');
+            setCategories(filteredCats);
+            
+            if (filteredCats.length > 0 && !categoryId) {
+              setCategoryId(filteredCats[0].id);
+            }
           }
         } catch (error) {
           console.error("Error loading categories:", error);
@@ -64,17 +77,17 @@ export default function AddIncomeDialog({
       loadCategories();
       resetForm();
     }
-  }, [open]);
+  }, [open, providedCategories, categoryId]);
 
   const resetForm = () => {
-    setCategory("");
+    setCategoryId("");
     setAmount("");
     setNote("");
     setError("");
   };
 
   const validateForm = () => {
-    if (!category) {
+    if (!categoryId) {
       setError("Vui lòng chọn danh mục");
       return false;
     }
@@ -94,21 +107,24 @@ export default function AddIncomeDialog({
       setIsSaving(true);
       const parsedAmount = parseFormattedNumber(amount);
 
-      const incomeData: Income = {
-        category,
+      const incomeData: Omit<Income, "id"> = {
+        categoryId,
         month,
         year,
         amount: parsedAmount,
         note,
       };
 
-      await incomeAPI.create(incomeData);
+      await incomeAPI.add(incomeData);
 
       toast({
         title: "Thành công",
         description: "Đã thêm khoản thu nhập mới",
       });
 
+      if (onSuccess) {
+        onSuccess();
+      }
       onSave();
       onOpenChange(false);
       resetForm();
@@ -140,12 +156,12 @@ export default function AddIncomeDialog({
 
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="category" className="text-right">
+            <label htmlFor="categoryId" className="text-right">
               Danh mục
             </label>
             <Select
-              value={category}
-              onValueChange={setCategory}
+              value={categoryId}
+              onValueChange={setCategoryId}
             >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Chọn danh mục" />

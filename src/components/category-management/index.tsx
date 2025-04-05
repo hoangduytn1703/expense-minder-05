@@ -15,6 +15,7 @@ export default function CategoryManagement() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Try to get data from API
       const [expenseCats, incomeCats] = await Promise.all([
         expenseCategoryAPI.getAll(),
         incomeCategoryAPI.getAll()

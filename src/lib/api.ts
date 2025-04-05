@@ -1,4 +1,3 @@
-
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
@@ -39,25 +38,32 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-// API Types
 export interface Income {
-  id: string;
-  amount: number;
-  description: string;
-  date: string;
+  id?: string;
+  _id?: string;
   categoryId: string;
+  category?: string;
+  amount: number;
+  note?: string;
   month: number;
   year: number;
+  date?: string;
+  description?: string;
 }
 
 export interface Expense {
-  id: string;
-  amount: number;
-  description: string;
-  date: string;
+  id?: string;
+  _id?: string;
   categoryId: string;
+  category?: string;
+  amount: number;
+  actualAmount?: number;
+  scope?: "S" | "L" | "C" | "B" | "Đ";
+  note?: string;
   month: number;
   year: number;
+  date?: string;
+  description?: string;
 }
 
 export interface IncomeCategory {
@@ -68,21 +74,27 @@ export interface IncomeCategory {
 export interface ExpenseCategory {
   id: string;
   name: string;
-  scope: string;
+  scope: "S" | "L" | "C" | "B" | "Đ";
 }
 
 export interface Debt {
-  id: string;
+  id?: string;
+  _id?: string;
   amount: number;
-  description: string;
-  dueDate: string;
-  paid: boolean;
+  description?: string;
+  dueDate?: string;
+  paid?: boolean;
+  totalAmount?: number;
+  months?: number;
+  startMonth?: number;
+  startYear?: number;
+  monthlyPayment?: number;
+  note?: string;
+  name?: string;
 }
 
-// Helper function to simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock data for categories
 let mockIncomeCategories: IncomeCategory[] = [
   { id: "salary", name: "Lương cứng" },
   { id: "bonus", name: "Thưởng/OT" },  
@@ -113,30 +125,27 @@ let mockExpenseCategories: ExpenseCategory[] = [
   { id: "special", name: "Đặc biệt", scope: "S" }
 ];
 
-// API Functions
+let mockIncomes: Income[] = [];
+let mockExpenses: Expense[] = [];
+let mockDebts: Debt[] = [];
+
 export const incomeAPI = {
   getAll: async (month: number, year: number): Promise<Income[]> => {
     try {
-      const response = await fetch(`/api/incomes?month=${month}&year=${year}`);
-      if (!response.ok) throw new Error('Failed to fetch incomes');
-      return response.json();
+      await delay(300);
+      return mockIncomes.filter(income => income.month === month && income.year === year);
     } catch (error) {
       console.error("Error fetching incomes:", error);
       return [];
     }
   },
   
-  add: async (income: Omit<Income, 'id'>): Promise<Income> => {
+  add: async (income: Omit<Income, "id">): Promise<Income> => {
     try {
-      const response = await fetch('/api/incomes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(income),
-      });
-      if (!response.ok) throw new Error('Failed to add income');
-      return response.json();
+      await delay(300);
+      const newIncome = { ...income, id: Date.now().toString() };
+      mockIncomes.push(newIncome);
+      return newIncome;
     } catch (error) {
       console.error("Error adding income:", error);
       throw error;
@@ -145,15 +154,13 @@ export const incomeAPI = {
   
   update: async (id: string, income: Partial<Income>): Promise<Income> => {
     try {
-      const response = await fetch(`/api/incomes/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(income),
-      });
-      if (!response.ok) throw new Error('Failed to update income');
-      return response.json();
+      await delay(300);
+      const index = mockIncomes.findIndex(i => i.id === id || i._id === id);
+      if (index !== -1) {
+        mockIncomes[index] = { ...mockIncomes[index], ...income };
+        return mockIncomes[index];
+      }
+      throw new Error('Income not found');
     } catch (error) {
       console.error("Error updating income:", error);
       throw error;
@@ -162,40 +169,36 @@ export const incomeAPI = {
   
   delete: async (id: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/incomes/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete income');
+      await delay(300);
+      mockIncomes = mockIncomes.filter(i => i.id !== id && i._id !== id);
     } catch (error) {
       console.error("Error deleting income:", error);
       throw error;
     }
+  },
+
+  create: async (income: Omit<Income, "id">): Promise<Income> => {
+    return incomeAPI.add(income);
   },
 };
 
 export const expenseAPI = {
   getAll: async (month: number, year: number): Promise<Expense[]> => {
     try {
-      const response = await fetch(`/api/expenses?month=${month}&year=${year}`);
-      if (!response.ok) throw new Error('Failed to fetch expenses');
-      return response.json();
+      await delay(300);
+      return mockExpenses.filter(expense => expense.month === month && expense.year === year);
     } catch (error) {
       console.error("Error fetching expenses:", error);
       return [];
     }
   },
   
-  add: async (expense: Omit<Expense, 'id'>): Promise<Expense> => {
+  add: async (expense: Omit<Expense, "id">): Promise<Expense> => {
     try {
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(expense),
-      });
-      if (!response.ok) throw new Error('Failed to add expense');
-      return response.json();
+      await delay(300);
+      const newExpense = { ...expense, id: Date.now().toString() };
+      mockExpenses.push(newExpense);
+      return newExpense;
     } catch (error) {
       console.error("Error adding expense:", error);
       throw error;
@@ -204,15 +207,13 @@ export const expenseAPI = {
   
   update: async (id: string, expense: Partial<Expense>): Promise<Expense> => {
     try {
-      const response = await fetch(`/api/expenses/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(expense),
-      });
-      if (!response.ok) throw new Error('Failed to update expense');
-      return response.json();
+      await delay(300);
+      const index = mockExpenses.findIndex(e => e.id === id || e._id === id);
+      if (index !== -1) {
+        mockExpenses[index] = { ...mockExpenses[index], ...expense };
+        return mockExpenses[index];
+      }
+      throw new Error('Expense not found');
     } catch (error) {
       console.error("Error updating expense:", error);
       throw error;
@@ -221,21 +222,26 @@ export const expenseAPI = {
   
   delete: async (id: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/expenses/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete expense');
+      await delay(300);
+      mockExpenses = mockExpenses.filter(e => e.id !== id && e._id !== id);
     } catch (error) {
       console.error("Error deleting expense:", error);
       throw error;
     }
   },
+
+  create: async (expense: Omit<Expense, "id">): Promise<Expense> => {
+    return expenseAPI.add(expense);
+  },
+
+  getByMonth: async (month: number, year: number): Promise<Expense[]> => {
+    return expenseAPI.getAll(month, year);
+  }
 };
 
 export const incomeCategoryAPI = {
   getAll: async (): Promise<IncomeCategory[]> => {
     try {
-      // Simulate API call to get income categories
       await delay(300);
       return [...mockIncomeCategories];
     } catch (error) {
@@ -246,7 +252,6 @@ export const incomeCategoryAPI = {
   
   add: async (category: IncomeCategory): Promise<IncomeCategory> => {
     try {
-      // Simulate API call to add income category
       await delay(300);
       mockIncomeCategories.push(category);
       return category;
@@ -258,7 +263,6 @@ export const incomeCategoryAPI = {
   
   update: async (id: string, category: Partial<IncomeCategory>): Promise<IncomeCategory> => {
     try {
-      // Simulate API call to update income category
       await delay(300);
       const index = mockIncomeCategories.findIndex(c => c.id === id);
       if (index !== -1) {
@@ -274,7 +278,6 @@ export const incomeCategoryAPI = {
   
   delete: async (id: string): Promise<void> => {
     try {
-      // Simulate API call to delete income category
       await delay(300);
       mockIncomeCategories = mockIncomeCategories.filter(c => c.id !== id);
     } catch (error) {
@@ -287,7 +290,6 @@ export const incomeCategoryAPI = {
 export const expenseCategoryAPI = {
   getAll: async (): Promise<ExpenseCategory[]> => {
     try {
-      // Simulate API call to get expense categories
       await delay(300);
       return [...mockExpenseCategories];
     } catch (error) {
@@ -298,7 +300,6 @@ export const expenseCategoryAPI = {
   
   add: async (category: ExpenseCategory): Promise<ExpenseCategory> => {
     try {
-      // Simulate API call to add expense category
       await delay(300);
       mockExpenseCategories.push(category);
       return category;
@@ -310,7 +311,6 @@ export const expenseCategoryAPI = {
   
   update: async (id: string, category: Partial<ExpenseCategory>): Promise<ExpenseCategory> => {
     try {
-      // Simulate API call to update expense category
       await delay(300);
       const index = mockExpenseCategories.findIndex(c => c.id === id);
       if (index !== -1) {
@@ -326,7 +326,6 @@ export const expenseCategoryAPI = {
   
   delete: async (id: string): Promise<void> => {
     try {
-      // Simulate API call to delete expense category
       await delay(300);
       mockExpenseCategories = mockExpenseCategories.filter(c => c.id !== id);
     } catch (error) {
@@ -403,7 +402,6 @@ export const summaryAPI = {
       return response.json();
     } catch (error) {
       console.error("Error fetching total assets:", error);
-      // Return mock data for demonstration
       return { totalAssets: 5000000 };
     }
   },
@@ -429,12 +427,10 @@ export const summaryAPI = {
   }
 };
 
-// Utility functions
 export const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 };
 
-// API aliases for backward compatibility
 export const addIncomeCategoryApi = incomeCategoryAPI.add;
 export const editIncomeCategoryApi = incomeCategoryAPI.update;
 export const addExpenseCategoryApi = expenseCategoryAPI.add;
