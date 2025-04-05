@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import CategoryDialog from "./category-dialog";
-import { ExpenseCategory, IncomeCategory } from "@/lib/api";
+import { ExpenseCategory, IncomeCategory, expenseCategoryAPI, incomeCategoryAPI } from "@/lib/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +36,7 @@ export default function CategoryTable({ categories, type, onUpdate }: CategoryTa
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<ExpenseCategory | IncomeCategory | null>(null);
+  const { toast } = useToast();
 
   const startEditing = (category: ExpenseCategory | IncomeCategory) => {
     setEditingCategory(category);
@@ -67,8 +68,8 @@ export default function CategoryTable({ categories, type, onUpdate }: CategoryTa
 
     try {
       const apiModule = type === "expense" 
-        ? (await import("@/lib/api")).expenseCategoryAPI 
-        : (await import("@/lib/api")).incomeCategoryAPI;
+        ? expenseCategoryAPI 
+        : incomeCategoryAPI;
       
       await apiModule.delete(categoryToDelete.id);
       
@@ -151,10 +152,11 @@ export default function CategoryTable({ categories, type, onUpdate }: CategoryTa
 
       <CategoryDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onSave={onUpdate}
+        setOpen={setIsDialogOpen}
+        mode={editingCategory ? "edit" : "add"}
+        categoryType={type}
         category={editingCategory || undefined}
-        type={type}
+        onSuccess={onUpdate}
       />
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
