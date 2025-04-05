@@ -1,145 +1,109 @@
-
-import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { 
-  Drawer,
-  DrawerContent,
-  DrawerTrigger
-} from "@/components/ui/drawer";
 import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MonthSelectorProps {
   month: number;
   year: number;
   onChange: (month: number, year: number) => void;
-  isLoading?: boolean;
 }
 
 export default function MonthSelector({ 
   month, 
   year, 
-  onChange, 
-  isLoading = false 
+  onChange 
 }: MonthSelectorProps) {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const minYear = 2025;
-  const maxYear = 2125;
-  
-  const monthNames = [
-    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", 
-    "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
-  ];
-  
-  const handlePrevMonth = () => {
-    if (isLoading) return;
-    
-    let newMonth = month - 1;
-    let newYear = year;
-    
-    if (newMonth < 1) {
-      newMonth = 12;
-      newYear--;
-    }
-    
-    // Ensure we don't go below the minimum year
-    if (newYear < minYear) {
-      newMonth = 1;
-      newYear = minYear;
-      return;
-    }
-    
+  const [selectedDate, setSelectedDate] = useState(new Date(year, month - 1, 1));
+
+  const handlePreviousMonth = () => {
+    const newMonth = month === 1 ? 12 : month - 1;
+    const newYear = month === 1 ? year - 1 : year;
     onChange(newMonth, newYear);
+    setSelectedDate(new Date(newYear, newMonth - 1, 1));
   };
-  
+
   const handleNextMonth = () => {
-    if (isLoading) return;
-    
-    let newMonth = month + 1;
-    let newYear = year;
-    
-    if (newMonth > 12) {
-      newMonth = 1;
-      newYear++;
-    }
-    
-    // Ensure we don't exceed the maximum year
-    if (newYear > maxYear) {
-      newMonth = 12;
-      newYear = maxYear;
-      return;
-    }
-    
+    const newMonth = month === 12 ? 1 : month + 1;
+    const newYear = month === 12 ? year + 1 : year;
     onChange(newMonth, newYear);
+    setSelectedDate(new Date(newYear, newMonth - 1, 1));
   };
 
-  const handleMonthYearSelect = (selectedDate: Date | undefined) => {
-    if (!selectedDate) return;
-    
-    const newMonth = selectedDate.getMonth() + 1; // JavaScript months are 0-indexed
-    const newYear = selectedDate.getFullYear();
-    
-    // Validate against min/max bounds
-    if (newYear < minYear || newYear > maxYear) return;
-    
-    onChange(newMonth, newYear);
-    setIsDrawerOpen(false);
+  const getMonthYearLabel = () => {
+    const date = new Date(year, month - 1);
+    return date.toLocaleDateString('vi-VN', {
+      month: 'long',
+      year: 'numeric',
+    });
   };
-  
-  // Generate a date for the current month/year for the calendar component
-  const currentDateForCalendar = new Date(year, month - 1, 1);
 
-  // Set the minimum and maximum selectable dates
-  const minDate = new Date(minYear, 0, 1);  // January 1, 2025
-  const maxDate = new Date(maxYear, 11, 31); // December 31, 2125
-  
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      const newMonth = date.getMonth() + 1;
+      const newYear = date.getFullYear();
+      onChange(newMonth, newYear);
+      setSelectedDate(new Date(newYear, newMonth - 1, 1));
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center space-x-4 bg-white rounded-full shadow-md px-5 py-2 w-fit mx-auto">
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        onClick={handlePrevMonth}
-        disabled={isLoading || (year === minYear && month === 1)}
-        className="text-gray-500 hover:text-black hover:bg-gray-100"
+    <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={handlePreviousMonth}
+        disabled={year === 2025 && month === 1}
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-4 w-4" />
       </Button>
       
-      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerTrigger asChild>
-          <Button 
-            variant="ghost"
-            className="text-xl font-medium min-w-[150px] text-center hover:bg-gray-100 flex items-center justify-center gap-2"
-            disabled={isLoading}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-[240px] justify-center text-left font-normal",
+              !selectedDate && "text-muted-foreground"
+            )}
           >
-            <span>{monthNames[month-1]} {year}</span>
-            <CalendarIcon className="h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            <span>{getMonthYearLabel()}</span>
           </Button>
-        </DrawerTrigger>
-        <DrawerContent>
-          <div className="p-4">
-            <h3 className="text-lg font-medium text-center mb-4">Chọn tháng và năm</h3>
-            <Calendar
-              mode="month"
-              selected={currentDateForCalendar}
-              onSelect={handleMonthYearSelect}
-              fromDate={minDate}
-              toDate={maxDate}
-              disabled={isLoading}
-              initialFocus
-            />
-          </div>
-        </DrawerContent>
-      </Drawer>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="center">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => handleDateSelect(date)}
+            initialFocus
+            month={selectedDate}
+            fromMonth={new Date(2025, 0)}
+            toMonth={new Date(2125, 11)}
+            captionLayout="dropdown-buttons"
+            fromYear={2025}
+            toYear={2125}
+            disabled={(date) => {
+              // Only allow selection of the first day of each month
+              return date.getDate() !== 1;
+            }}
+          />
+        </PopoverContent>
+      </Popover>
       
-      <Button 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        variant="outline"
+        size="icon"
         onClick={handleNextMonth}
-        disabled={isLoading || (year === maxYear && month === 12)}
-        className="text-gray-500 hover:text-black hover:bg-gray-100"
+        disabled={year === 2125 && month === 12}
       >
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
   );

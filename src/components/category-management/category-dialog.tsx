@@ -1,16 +1,33 @@
-
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
+import { generateId } from "@/lib/utils";
+import {
+  addExpenseCategoryApi,
+  editExpenseCategoryApi,
+  addIncomeCategoryApi,
+  editIncomeCategoryApi,
+} from "@/lib/api";
 import {
   Select,
   SelectContent,
@@ -18,172 +35,174 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ExpenseCategory, IncomeCategory } from "@/lib/api";
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface IncomeCategory extends Category { }
+
+interface ExpenseCategory extends Category {
+  scope: string;
+}
+
+const categoryFormSchema = z.object({
+  name: z.string().min(2, {
+    message: "Tên danh mục phải có ít nhất 2 ký tự.",
+  }),
+  scope: z.string().optional(),
+});
 
 interface CategoryDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: () => void;
-  category?: ExpenseCategory | IncomeCategory;
-  type: "income" | "expense";
+  setOpen: (open: boolean) => void;
+  mode: "add" | "edit";
+  categoryType: "income" | "expense";
+  category?: IncomeCategory | ExpenseCategory;
+  onSuccess?: () => void;
 }
+
+type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 export default function CategoryDialog({
   open,
-  onOpenChange,
-  onSave,
+  setOpen,
+  mode,
+  categoryType,
   category,
-  type
+  onSuccess,
 }: CategoryDialogProps) {
-  const [id, setId] = useState("");
-  const [name, setName] = useState("");
-  const [scope, setScope] = useState<"S" | "L" | "C" | "B" | "Đ">("S");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const isEditing = !!category;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (open && category) {
-      setId(category.id);
-      setName(category.name);
-      if ("scope" in category) {
-        setScope(category.scope);
-      }
-    } else if (open) {
-      // Clear form for new category
-      setId("");
-      setName("");
-      setScope("S");
-    }
-    setError("");
-  }, [open, category]);
+  const form = useForm<CategoryFormValues>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      name: category?.name || "",
+      scope: (category as ExpenseCategory)?.scope || "S",
+    },
+  });
 
-  const validateForm = () => {
-    if (!id || !name) {
-      setError("Vui lòng điền đầy đủ thông tin");
-      return false;
-    }
-    
-    // ID should only contain lowercase letters, numbers, and hyphens
-    if (!/^[a-z0-9-]+$/.test(id)) {
-      setError("ID chỉ được chứa chữ thường, số và dấu gạch ngang");
-      return false;
-    }
-    
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) return;
+  const handleSubmit = async (data: CategoryFormValues) => {
+    setIsSubmitting(true);
     
     try {
-      setIsSaving(true);
-      
-      const apiModule = type === "expense" 
-        ? (await import("@/lib/api")).expenseCategoryAPI 
-        : (await import("@/lib/api")).incomeCategoryAPI;
-      
-      const data = type === "expense" 
-        ? { id, name, scope } as ExpenseCategory
-        : { id, name } as IncomeCategory;
-      
-      if (isEditing) {
-        await apiModule.update(data);
+      if (categoryType === 'income') {
+        // Handle income category
+        const categoryData: IncomeCategory = {
+          id: category?.id || generateId(),
+          name: data.name,
+        };
+        
+        if (mode === 'edit' && category) {
+          await editIncomeCategoryApi(categoryData);
+        } else {
+          await addIncomeCategoryApi(categoryData);
+        }
       } else {
-        await apiModule.create(data);
+        // Handle expense category
+        const categoryData: ExpenseCategory = {
+          id: category?.id || generateId(),
+          name: data.name,
+          scope: data.scope || 'S', // Provide default if not available
+        };
+        
+        if (mode === 'edit' && category) {
+          await editExpenseCategoryApi(categoryData);
+        } else {
+          await addExpenseCategoryApi(categoryData);
+        }
       }
       
+      onSuccess?.();
+      form.reset();
+      setOpen(false);
       toast({
-        title: "Thành công",
-        description: isEditing ? "Đã cập nhật danh mục" : "Đã thêm danh mục mới",
+        title: mode === 'add' ? "Đã thêm danh mục mới" : "Đã cập nhật danh mục",
+        description: "Thay đổi đã được lưu thành công.",
       });
-      
-      onSave();
-      onOpenChange(false);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Đã có lỗi xảy ra";
+      console.error("Error submitting category", error);
       toast({
         title: "Lỗi",
-        description: errorMessage,
+        description: "Không thể lưu danh mục. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {mode === "add" ? (
+          <Button variant="outline">Thêm danh mục</Button>
+        ) : (
+          <Button variant="ghost">Chỉnh sửa</Button>
+        )}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Chỉnh sửa danh mục" : "Thêm danh mục mới"}
+            {mode === "add" ? "Thêm danh mục" : "Chỉnh sửa danh mục"}
           </DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Cập nhật thông tin danh mục"
-              : "Điền thông tin cho danh mục mới"}
+            {mode === "add"
+              ? "Tạo một danh mục mới để quản lý thu nhập và chi tiêu của bạn."
+              : "Chỉnh sửa thông tin danh mục hiện tại."}
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="id" className="text-right">
-              ID
-            </label>
-            <Input
-              id="id"
-              value={id}
-              onChange={(e) => setId(e.target.value.toLowerCase())}
-              className="col-span-3"
-              disabled={isEditing}
-              placeholder="category-id"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tên danh mục</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ví dụ: Ăn uống" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="name" className="text-right">
-              Tên
-            </label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="col-span-3"
-              placeholder="Tên danh mục"
-            />
-          </div>
-          
-          {type === "expense" && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="scope" className="text-right">
-                Phạm vi
-              </label>
-              <Select value={scope} onValueChange={(value) => setScope(value as any)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Chọn phạm vi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="S">S - Sống</SelectItem>
-                  <SelectItem value="L">L - Lẻ</SelectItem>
-                  <SelectItem value="C">C - Cần</SelectItem>
-                  <SelectItem value="B">B - Bổ sung</SelectItem>
-                  <SelectItem value="Đ">Đ - Đầu tư</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {error && (
-            <div className="text-red-500 text-sm mt-2">{error}</div>
-          )}
-        </div>
-        
-        <DialogFooter>
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Đang lưu..." : "Lưu"}
-          </Button>
-        </DialogFooter>
+            {categoryType === "expense" && (
+              <FormField
+                control={form.control}
+                name="scope"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phạm vi</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn phạm vi" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="S">Sinh hoạt</SelectItem>
+                        <SelectItem value="L">Làm đẹp</SelectItem>
+                        <SelectItem value="C">Con cái</SelectItem>
+                        <SelectItem value="B">Bản thân</SelectItem>
+                        <SelectItem value="Đ">Đầu tư</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? "Đang xử lý..."
+                : mode === "add"
+                  ? "Thêm"
+                  : "Lưu"}
+            </Button>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

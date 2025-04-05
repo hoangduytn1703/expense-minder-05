@@ -20,7 +20,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className }: SidebarProps) {
-  const { totalAssets, totalDebts } = useAssets();
+  const { totalAssets, totalDebt } = useAssets(); // Fix: use totalDebt instead of totalDebts
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
   
@@ -124,7 +124,7 @@ export default function Sidebar({ className }: SidebarProps) {
               {!isCollapsed ? "Tổng nợ" : "Nợ"}
             </p>
             <p className={`text-lg font-semibold text-red-600 ${isCollapsed ? "text-center" : ""}`}>
-              {formatCurrency(totalDebts)} đ
+              {formatCurrency(totalDebt)} đ
             </p>
           </div>
         </div>
