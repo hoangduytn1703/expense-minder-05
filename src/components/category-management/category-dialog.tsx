@@ -9,7 +9,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -24,10 +23,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { generateId } from "@/lib/utils";
 import {
-  addExpenseCategoryApi,
-  editExpenseCategoryApi,
-  addIncomeCategoryApi,
-  editIncomeCategoryApi,
+  ExpenseCategory,
+  IncomeCategory,
+  expenseCategoryAPI,
+  incomeCategoryAPI,
 } from "@/lib/api";
 import {
   Select,
@@ -97,9 +96,9 @@ export default function CategoryDialog({
         };
         
         if (mode === 'edit' && category) {
-          await editIncomeCategoryApi(categoryData);
+          await incomeCategoryAPI.update(categoryData.id, categoryData);
         } else {
-          await addIncomeCategoryApi(categoryData);
+          await incomeCategoryAPI.add(categoryData);
         }
       } else {
         // Handle expense category
@@ -110,9 +109,9 @@ export default function CategoryDialog({
         };
         
         if (mode === 'edit' && category) {
-          await editExpenseCategoryApi(categoryData);
+          await expenseCategoryAPI.update(categoryData.id, categoryData);
         } else {
-          await addExpenseCategoryApi(categoryData);
+          await expenseCategoryAPI.add(categoryData);
         }
       }
       

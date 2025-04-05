@@ -4,11 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CategoryTable from "./category-table";
 import { ExpenseCategory, IncomeCategory, expenseCategoryAPI, incomeCategoryAPI } from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CategoryManagement() {
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   const loadData = async () => {
     setLoading(true);
@@ -22,6 +24,11 @@ export default function CategoryManagement() {
       setIncomeCategories(incomeCats);
     } catch (error) {
       console.error("Lỗi khi tải danh mục:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh mục. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
