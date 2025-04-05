@@ -5,7 +5,6 @@ import { summaryAPI } from "@/lib/api";
 // Define the context shape
 interface AssetsContextType {
   totalAssets: number;
-  totalDebt: number;
   percentageSpent: number;
   refreshTotalAssets: () => Promise<void>;
 }
@@ -13,7 +12,6 @@ interface AssetsContextType {
 // Create the context with default values
 const AssetsContext = createContext<AssetsContextType>({
   totalAssets: 0,
-  totalDebt: 0,
   percentageSpent: 0,
   refreshTotalAssets: async () => {},
 });
@@ -27,7 +25,6 @@ interface AssetsProviderProps {
 
 export const AssetsProvider: React.FC<AssetsProviderProps> = ({ children }) => {
   const [totalAssets, setTotalAssets] = useState(0);
-  const [totalDebt, setTotalDebt] = useState(0);
   const [percentageSpent, setPercentageSpent] = useState(0);
 
   // Function to fetch total assets data
@@ -35,7 +32,6 @@ export const AssetsProvider: React.FC<AssetsProviderProps> = ({ children }) => {
     try {
       const response = await summaryAPI.getTotalAssets();
       setTotalAssets(response.totalAssets);
-      setTotalDebt(response.totalDebt || 0);
       
       // Calculate percentage spent
       const percentSpent = response.totalAllTimeExpense 
@@ -58,7 +54,7 @@ export const AssetsProvider: React.FC<AssetsProviderProps> = ({ children }) => {
   }, []);
 
   return (
-    <AssetsContext.Provider value={{ totalAssets, totalDebt, percentageSpent, refreshTotalAssets }}>
+    <AssetsContext.Provider value={{ totalAssets, percentageSpent, refreshTotalAssets }}>
       {children}
     </AssetsContext.Provider>
   );

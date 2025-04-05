@@ -44,12 +44,6 @@ export function parseFormattedNumber(value: string): number {
   return isNaN(num) ? 0 : num;
 }
 
-// Generate a random ID
-export function generateId(): string {
-  // Create a random string with timestamp for uniqueness
-  return 'id-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-}
-
 // Danh sách các loại thu nhập
 export const incomeCategories = [
   { id: "salary", name: "Lương cứng" },

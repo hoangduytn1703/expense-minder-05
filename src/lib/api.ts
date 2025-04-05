@@ -1,437 +1,291 @@
-import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+import { getCurrentUserId } from './auth';
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    };
-    mql.addEventListener("change", onChange);
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  return !!isMobile;
-}
-
-export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = React.useState(false);
-
-  React.useEffect(() => {
-    const media = window.matchMedia(query);
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
-    
-    const listener = () => {
-      setMatches(media.matches);
-    };
-    
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
-  }, [matches, query]);
-
-  return matches;
-}
-
+// Interfaces
 export interface Income {
   id?: string;
-  _id?: string;
-  categoryId: string;
-  category?: string;
+  category: string;
   amount: number;
-  note?: string;
   month: number;
   year: number;
-  date?: string;
-  description?: string;
+  note: string;
 }
 
 export interface Expense {
   id?: string;
-  _id?: string;
-  categoryId: string;
-  category?: string;
+  category: string;
   amount: number;
-  actualAmount?: number;
-  scope?: "S" | "L" | "C" | "B" | "Đ";
-  note?: string;
   month: number;
   year: number;
-  date?: string;
-  description?: string;
-}
-
-export interface IncomeCategory {
-  id: string;
-  name: string;
-}
-
-export interface ExpenseCategory {
-  id: string;
-  name: string;
-  scope: "S" | "L" | "C" | "B" | "Đ";
+  note: string;
+  scope: string;
+  actualAmount?: number;
 }
 
 export interface Debt {
   id?: string;
   _id?: string;
-  amount: number;
-  description?: string;
-  dueDate?: string;
-  paid?: boolean;
-  totalAmount?: number;
-  months?: number;
-  startMonth?: number;
-  startYear?: number;
+  name: string;
+  totalAmount: number;
+  months: number;
+  startMonth: number;
+  startYear: number;
   monthlyPayment?: number;
   note?: string;
-  name?: string;
+  isPaid: boolean;
 }
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper function for API simulation
+const fetchAPI = async (endpoint: string, method: string = 'GET', data?: any) => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    
+    // LocalStorage keys with user ID for data separation
+    const storageKeys = {
+      incomes: `incomes_${userId}`,
+      expenses: `expenses_${userId}`,
+      debts: `debts_${userId}`,
+    };
+    
+    if (endpoint.includes('/incomes')) {
+      return handleIncomes(endpoint, method, data, storageKeys.incomes);
+    } else if (endpoint.includes('/expenses')) {
+      return handleExpenses(endpoint, method, data, storageKeys.expenses);
+    } else if (endpoint.includes('/debts')) {
+      return handleDebts(endpoint, method, data, storageKeys.debts);
+    } else if (endpoint.includes('/summary')) {
+      return handleSummary(endpoint, storageKeys);
+    }
+    
+    throw new Error('Invalid endpoint');
+  } catch (error) {
+    console.error('API error:', error);
+    throw error;
+  }
+};
 
-let mockIncomeCategories: IncomeCategory[] = [
-  { id: "salary", name: "Lương cứng" },
-  { id: "bonus", name: "Thưởng/OT" },  
-  { id: "freelance", name: "Freelance" },
-  { id: "debtCollection", name: "Thu nợ" },
-  { id: "monthlyBalance", name: "Tiền từ tháng trước" },
-  { id: "advance", name: "Tiền nhậu" },
-  { id: "hui", name: "Hụi" },
-  { id: "other", name: "Khác" }
-];
+// Handle income data
+const handleIncomes = (endpoint: string, method: string, data: any, storageKey: string) => {
+  // Get existing data or initialize empty array
+  const incomes: Income[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  
+  if (method === 'GET') {
+    // Parse URL parameters
+    const url = new URL('http://dummy.com' + endpoint);
+    const month = url.searchParams.get('month');
+    const year = url.searchParams.get('year');
+    
+    if (month && year) {
+      return incomes.filter(income => 
+        income.month === Number(month) && income.year === Number(year)
+      );
+    }
+    return incomes;
+  }
+  
+  if (method === 'POST') {
+    const id = `income_${Date.now()}`;
+    const newIncome = { ...data, id };
+    incomes.push(newIncome);
+    localStorage.setItem(storageKey, JSON.stringify(incomes));
+    return newIncome;
+  }
+  
+  if (method === 'PUT') {
+    const updatedIncomes = incomes.map(income => 
+      income.category === data.category &&
+      income.month === data.month &&
+      income.year === data.year ? data : income
+    );
+    localStorage.setItem(storageKey, JSON.stringify(updatedIncomes));
+    return data;
+  }
+  
+  if (method === 'DELETE') {
+    const filteredIncomes = incomes.filter(income => income.id !== data.id);
+    localStorage.setItem(storageKey, JSON.stringify(filteredIncomes));
+    return { success: true };
+  }
+};
 
-let mockExpenseCategories: ExpenseCategory[] = [
-  { id: "rent", name: "Tiền trọ", scope: "S" },
-  { id: "sendHome", name: "Gửi về nhà", scope: "S" },
-  { id: "breakfast", name: "Ăn sáng", scope: "S" },
-  { id: "lunch", name: "Ăn trưa", scope: "S" },
-  { id: "dinner", name: "Ăn tối", scope: "S" },
-  { id: "transport", name: "Đi lại/ Xăng", scope: "S" },
-  { id: "shopping", name: "Mua sắm", scope: "S" },
-  { id: "fee", name: "Chi phí", scope: "S" },
-  { id: "entertainment", name: "Giải trí, yêu đương", scope: "L" },
-  { id: "longTermSaving", name: "Để dành (lâu dài)", scope: "C" },
-  { id: "emergencySaving", name: "Để dành (sơ cua, bệnh hoạn)", scope: "B" },
-  { id: "investment", name: "Đầu Tư", scope: "Đ" },
-  { id: "debtPayment", name: "Trả nợ", scope: "S" },
-  { id: "creditPayment", name: "Trả tín dụng", scope: "S" },
-  { id: "additional", name: "Phát sinh thêm", scope: "S" },
-  { id: "special", name: "Đặc biệt", scope: "S" }
-];
+// Handle expense data
+const handleExpenses = (endpoint: string, method: string, data: any, storageKey: string) => {
+  const expenses: Expense[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  
+  if (method === 'GET') {
+    const url = new URL('http://dummy.com' + endpoint);
+    const month = url.searchParams.get('month');
+    const year = url.searchParams.get('year');
+    
+    if (month && year) {
+      return expenses.filter(expense => 
+        expense.month === Number(month) && expense.year === Number(year)
+      );
+    }
+    return expenses;
+  }
+  
+  if (method === 'POST') {
+    const id = `expense_${Date.now()}`;
+    const newExpense = { ...data, id };
+    expenses.push(newExpense);
+    localStorage.setItem(storageKey, JSON.stringify(expenses));
+    return newExpense;
+  }
+  
+  if (method === 'PUT') {
+    const updatedExpenses = expenses.map(expense => 
+      expense.category === data.category &&
+      expense.month === data.month &&
+      expense.year === data.year ? data : expense
+    );
+    localStorage.setItem(storageKey, JSON.stringify(updatedExpenses));
+    return data;
+  }
+  
+  if (method === 'DELETE') {
+    const filteredExpenses = expenses.filter(expense => expense.id !== data.id);
+    localStorage.setItem(storageKey, JSON.stringify(filteredExpenses));
+    return { success: true };
+  }
+};
 
-let mockIncomes: Income[] = [];
-let mockExpenses: Expense[] = [];
-let mockDebts: Debt[] = [];
+// Handle debt data
+const handleDebts = (endpoint: string, method: string, data: any, storageKey: string) => {
+  const debts: Debt[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  
+  if (method === 'GET') {
+    return debts;
+  }
+  
+  if (method === 'POST') {
+    const id = `debt_${Date.now()}`;
+    const newDebt = { ...data, id };
+    debts.push(newDebt);
+    localStorage.setItem(storageKey, JSON.stringify(debts));
+    return newDebt;
+  }
+  
+  if (method === 'PUT') {
+    const updatedDebts = debts.map(debt => debt.id === data.id ? data : debt);
+    localStorage.setItem(storageKey, JSON.stringify(updatedDebts));
+    return data;
+  }
+  
+  if (method === 'DELETE') {
+    const filteredDebts = debts.filter(debt => debt.id !== data);
+    localStorage.setItem(storageKey, JSON.stringify(filteredDebts));
+    return { success: true };
+  }
+};
 
+// Handle summary data
+const handleSummary = (endpoint: string, storageKeys: Record<string, string>) => {
+  const incomes: Income[] = JSON.parse(localStorage.getItem(storageKeys.incomes) || '[]');
+  const expenses: Expense[] = JSON.parse(localStorage.getItem(storageKeys.expenses) || '[]');
+  const debts: Debt[] = JSON.parse(localStorage.getItem(storageKeys.debts) || '[]');
+  
+  if (endpoint.includes('/total-assets')) {
+    const totalIncome = incomes.reduce((sum, item) => sum + item.amount, 0);
+    const totalExpense = expenses.reduce((sum, item) => sum + item.amount, 0);
+    const totalDebt = debts
+      .filter(debt => !debt.isPaid)
+      .reduce((sum, debt) => sum + debt.amount, 0);
+    
+    return {
+      totalAssets: totalIncome - totalExpense - totalDebt,
+      totalAllTimeIncome: totalIncome,
+      totalAllTimeExpense: totalExpense,
+      totalDebts: totalDebt
+    };
+  }
+  
+  // Month summary
+  const url = new URL('http://dummy.com' + endpoint);
+  const month = Number(url.searchParams.get('month'));
+  const year = Number(url.searchParams.get('year'));
+  
+  const monthIncomes = incomes.filter(income => 
+    income.month === month && income.year === year
+  );
+  const monthExpenses = expenses.filter(expense => 
+    expense.month === month && expense.year === year
+  );
+  
+  // Calculate previous month remaining (savings)
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  
+  const prevMonthIncomes = incomes.filter(income => 
+    income.month === prevMonth && income.year === prevYear
+  );
+  
+  const prevMonthExpenses = expenses.filter(expense => 
+    expense.month === prevMonth && expense.year === prevYear
+  );
+  
+  const prevMonthIncome = prevMonthIncomes.reduce((sum, item) => sum + item.amount, 0);
+  const prevMonthExpense = prevMonthExpenses.reduce((sum, item) => sum + item.amount, 0);
+  const previousMonthRemaining = prevMonthIncome - prevMonthExpense;
+  
+  const totalIncome = monthIncomes.reduce((sum, item) => sum + item.amount, 0);
+  const totalExpense = monthExpenses.reduce((sum, item) => sum + item.amount, 0);
+  
+  return {
+    totalIncome,
+    totalExpense,
+    remaining: totalIncome - totalExpense,
+    previousMonthRemaining: previousMonthRemaining > 0 ? previousMonthRemaining : 0
+  };
+};
+
+// Income API
 export const incomeAPI = {
-  getAll: async (month: number, year: number): Promise<Income[]> => {
-    try {
-      await delay(300);
-      return mockIncomes.filter(income => income.month === month && income.year === year);
-    } catch (error) {
-      console.error("Error fetching incomes:", error);
-      return [];
-    }
-  },
-  
-  add: async (income: Omit<Income, "id">): Promise<Income> => {
-    try {
-      await delay(300);
-      const newIncome = { ...income, id: Date.now().toString() };
-      mockIncomes.push(newIncome);
-      return newIncome;
-    } catch (error) {
-      console.error("Error adding income:", error);
-      throw error;
-    }
-  },
-  
-  update: async (id: string, income: Partial<Income>): Promise<Income> => {
-    try {
-      await delay(300);
-      const index = mockIncomes.findIndex(i => i.id === id || i._id === id);
-      if (index !== -1) {
-        mockIncomes[index] = { ...mockIncomes[index], ...income };
-        return mockIncomes[index];
-      }
-      throw new Error('Income not found');
-    } catch (error) {
-      console.error("Error updating income:", error);
-      throw error;
-    }
-  },
-  
-  delete: async (id: string): Promise<void> => {
-    try {
-      await delay(300);
-      mockIncomes = mockIncomes.filter(i => i.id !== id && i._id !== id);
-    } catch (error) {
-      console.error("Error deleting income:", error);
-      throw error;
-    }
-  },
-
-  create: async (income: Omit<Income, "id">): Promise<Income> => {
-    return incomeAPI.add(income);
-  },
+  getAll: async () => fetchAPI('/api/incomes'),
+  getByMonth: async (month: number, year: number) => 
+    fetchAPI(`/api/incomes?month=${month}&year=${year}`),
+  add: async (data: Income) => fetchAPI('/api/incomes', 'POST', data),
+  update: async (data: Income) => fetchAPI('/api/incomes', 'PUT', data),
+  delete: async (id: string) => fetchAPI('/api/incomes', 'DELETE', { id }),
+  // Alias for consistency with component calls
+  create: async (data: Income) => fetchAPI('/api/incomes', 'POST', data)
 };
 
+// Expense API
 export const expenseAPI = {
-  getAll: async (month: number, year: number): Promise<Expense[]> => {
-    try {
-      await delay(300);
-      return mockExpenses.filter(expense => expense.month === month && expense.year === year);
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
-      return [];
-    }
-  },
-  
-  add: async (expense: Omit<Expense, "id">): Promise<Expense> => {
-    try {
-      await delay(300);
-      const newExpense = { ...expense, id: Date.now().toString() };
-      mockExpenses.push(newExpense);
-      return newExpense;
-    } catch (error) {
-      console.error("Error adding expense:", error);
-      throw error;
-    }
-  },
-  
-  update: async (id: string, expense: Partial<Expense>): Promise<Expense> => {
-    try {
-      await delay(300);
-      const index = mockExpenses.findIndex(e => e.id === id || e._id === id);
-      if (index !== -1) {
-        mockExpenses[index] = { ...mockExpenses[index], ...expense };
-        return mockExpenses[index];
-      }
-      throw new Error('Expense not found');
-    } catch (error) {
-      console.error("Error updating expense:", error);
-      throw error;
-    }
-  },
-  
-  delete: async (id: string): Promise<void> => {
-    try {
-      await delay(300);
-      mockExpenses = mockExpenses.filter(e => e.id !== id && e._id !== id);
-    } catch (error) {
-      console.error("Error deleting expense:", error);
-      throw error;
-    }
-  },
-
-  create: async (expense: Omit<Expense, "id">): Promise<Expense> => {
-    return expenseAPI.add(expense);
-  },
-
-  getByMonth: async (month: number, year: number): Promise<Expense[]> => {
-    return expenseAPI.getAll(month, year);
-  }
+  getAll: async () => fetchAPI('/api/expenses'),
+  getByMonth: async (month: number, year: number) => 
+    fetchAPI(`/api/expenses?month=${month}&year=${year}`),
+  add: async (data: Expense) => fetchAPI('/api/expenses', 'POST', data),
+  update: async (data: Expense) => fetchAPI('/api/expenses', 'PUT', data),
+  delete: async (id: string) => fetchAPI('/api/expenses', 'DELETE', { id }),
+  // Alias for consistency with component calls
+  create: async (data: Expense) => fetchAPI('/api/expenses', 'POST', data)
 };
 
-export const incomeCategoryAPI = {
-  getAll: async (): Promise<IncomeCategory[]> => {
-    try {
-      await delay(300);
-      return [...mockIncomeCategories];
-    } catch (error) {
-      console.error("Error fetching income categories:", error);
-      return [];
-    }
-  },
-  
-  add: async (category: IncomeCategory): Promise<IncomeCategory> => {
-    try {
-      await delay(300);
-      mockIncomeCategories.push(category);
-      return category;
-    } catch (error) {
-      console.error("Error adding income category:", error);
-      throw error;
-    }
-  },
-  
-  update: async (id: string, category: Partial<IncomeCategory>): Promise<IncomeCategory> => {
-    try {
-      await delay(300);
-      const index = mockIncomeCategories.findIndex(c => c.id === id);
-      if (index !== -1) {
-        mockIncomeCategories[index] = { ...mockIncomeCategories[index], ...category };
-        return mockIncomeCategories[index];
-      }
-      throw new Error('Income category not found');
-    } catch (error) {
-      console.error("Error updating income category:", error);
-      throw error;
-    }
-  },
-  
-  delete: async (id: string): Promise<void> => {
-    try {
-      await delay(300);
-      mockIncomeCategories = mockIncomeCategories.filter(c => c.id !== id);
-    } catch (error) {
-      console.error("Error deleting income category:", error);
-      throw error;
-    }
-  },
-};
-
-export const expenseCategoryAPI = {
-  getAll: async (): Promise<ExpenseCategory[]> => {
-    try {
-      await delay(300);
-      return [...mockExpenseCategories];
-    } catch (error) {
-      console.error("Error fetching expense categories:", error);
-      return [];
-    }
-  },
-  
-  add: async (category: ExpenseCategory): Promise<ExpenseCategory> => {
-    try {
-      await delay(300);
-      mockExpenseCategories.push(category);
-      return category;
-    } catch (error) {
-      console.error("Error adding expense category:", error);
-      throw error;
-    }
-  },
-  
-  update: async (id: string, category: Partial<ExpenseCategory>): Promise<ExpenseCategory> => {
-    try {
-      await delay(300);
-      const index = mockExpenseCategories.findIndex(c => c.id === id);
-      if (index !== -1) {
-        mockExpenseCategories[index] = { ...mockExpenseCategories[index], ...category };
-        return mockExpenseCategories[index];
-      }
-      throw new Error('Expense category not found');
-    } catch (error) {
-      console.error("Error updating expense category:", error);
-      throw error;
-    }
-  },
-  
-  delete: async (id: string): Promise<void> => {
-    try {
-      await delay(300);
-      mockExpenseCategories = mockExpenseCategories.filter(c => c.id !== id);
-    } catch (error) {
-      console.error("Error deleting expense category:", error);
-      throw error;
-    }
-  },
-};
-
+// Debt API
 export const debtAPI = {
-  getAll: async (): Promise<Debt[]> => {
-    try {
-      const response = await fetch('/api/debts');
-      if (!response.ok) throw new Error('Failed to fetch debts');
-      return response.json();
-    } catch (error) {
-      console.error("Error fetching debts:", error);
-      return [];
-    }
+  getAll: async () => fetchAPI('/api/debts'),
+  add: async (data: Debt) => fetchAPI('/api/debts', 'POST', data),
+  update: async (id: string, data: Debt) => fetchAPI('/api/debts', 'PUT', { ...data, id }),
+  delete: async (id: string) => fetchAPI('/api/debts', 'DELETE', id),
+  togglePaid: async (debt: Debt) => {
+    const updatedDebt = { ...debt, isPaid: !debt.isPaid };
+    return fetchAPI('/api/debts', 'PUT', updatedDebt);
   },
-  
-  add: async (debt: Omit<Debt, 'id'>): Promise<Debt> => {
-    try {
-      const response = await fetch('/api/debts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(debt),
-      });
-      if (!response.ok) throw new Error('Failed to add debt');
-      return response.json();
-    } catch (error) {
-      console.error("Error adding debt:", error);
-      throw error;
-    }
-  },
-  
-  update: async (id: string, debt: Partial<Debt>): Promise<Debt> => {
-    try {
-      const response = await fetch(`/api/debts/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(debt),
-      });
-      if (!response.ok) throw new Error('Failed to update debt');
-      return response.json();
-    } catch (error) {
-      console.error("Error updating debt:", error);
-      throw error;
-    }
-  },
-  
-  delete: async (id: string): Promise<void> => {
-    try {
-      const response = await fetch(`/api/debts/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete debt');
-    } catch (error) {
-      console.error("Error deleting debt:", error);
-      throw error;
-    }
-  },
+  // Alias for consistency with component calls
+  create: async (data: Debt) => fetchAPI('/api/debts', 'POST', data)
 };
 
+// Summary API
 export const summaryAPI = {
-  getTotalAssets: async () => {
-    try {
-      const response = await fetch('/api/summary/assets');
-      if (!response.ok) throw new Error('Failed to fetch total assets');
-      return response.json();
-    } catch (error) {
-      console.error("Error fetching total assets:", error);
-      return { totalAssets: 5000000 };
-    }
-  },
-  getMonthSummary: async (month: number, year: number) => {
-    try {
-      const response = await fetch(`/api/summary/monthly?month=${month}&year=${year}`);
-      if (!response.ok) throw new Error('Failed to fetch monthly summary');
-      return response.json();
-    } catch (error) {
-      console.error("Error fetching monthly summary:", error);
-      return { incomeTotal: 0, expenseTotal: 0 };
-    }
-  },
-  getYearlySummary: async (year: number) => {
-    try {
-      const response = await fetch(`/api/summary/yearly?year=${year}`);
-      if (!response.ok) throw new Error('Failed to fetch yearly summary');
-      return response.json();
-    } catch (error) {
-      console.error("Error fetching yearly summary:", error);
-      return [];
-    }
-  }
+  getMonthSummary: async (month: number, year: number) => 
+    fetchAPI(`/api/summary/month?month=${month}&year=${year}`),
+  getTotalAssets: async () => fetchAPI('/api/summary/total-assets')
 };
-
-export const generateId = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-};
-
-export const addIncomeCategoryApi = incomeCategoryAPI.add;
-export const editIncomeCategoryApi = incomeCategoryAPI.update;
-export const addExpenseCategoryApi = expenseCategoryAPI.add;
-export const editExpenseCategoryApi = expenseCategoryAPI.update;

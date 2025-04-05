@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Income, incomeAPI } from "@/lib/api";
 import { formatNumberInput, parseFormattedNumber } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 interface EditIncomeDialogProps {
   income: Income;
@@ -30,10 +30,9 @@ export default function EditIncomeDialog({
   const [amount, setAmount] = useState(formatNumberInput(income.amount.toString()));
   const [note, setNote] = useState(income.note || "");
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
 
   // Reset form when income changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (open) {
       setAmount(formatNumberInput(income.amount.toString()));
       setNote(income.note || "");
@@ -44,18 +43,17 @@ export default function EditIncomeDialog({
     try {
       setIsSaving(true);
       const parsedAmount = parseFormattedNumber(amount);
-      const id = income.id || income._id;
+      const id = income._id || income.id;
 
       if (id) {
         // Update existing income
-        await incomeAPI.update(id, {
-          amount: parsedAmount,
-          note
-        });
+        await incomeAPI.update(id, { amount: parsedAmount, note });
       } else {
-        // Create new income (should not happen, but just in case)
-        await incomeAPI.add({
-          ...income,
+        // Create new income
+        await incomeAPI.create({
+          month: income.month,
+          year: income.year,
+          category: income.category,
           amount: parsedAmount,
           note,
         });
